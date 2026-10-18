@@ -1,8 +1,13 @@
 {
   "name": "yes-machine",
   "productName": "Yes Machine",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Private-network remote desktop with a browser client",
+  "homepage": "https://github.com/rOrtiz28/YesMachinePublic",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rOrtiz28/YesMachinePublic.git"
+  },
   "license": "MIT",
   "main": "src/main/main.cjs",
   "scripts": {
@@ -34,6 +39,7 @@
     "directories": {
       "output": "dist"
     },
+    "publish": null,
     "files": [
       "src/**",
       "public/**",
@@ -59,7 +65,7 @@
     "mac": {
       "icon": "assets/icon.icns",
       "target": [
-        "zip"
+        "dmg"
       ],
       "category": "public.app-category.productivity",
       "identity": "-",
@@ -86,15 +92,28 @@
     "win": {
       "icon": "assets/icon.ico",
       "target": [
-        "zip"
+        "nsis"
       ]
+    },
+    "nsis": {
+      "artifactName": "YesMachine-${version}-win.${ext}",
+      "differentialPackage": false,
+      "useZip": true
     },
     "linux": {
       "icon": "assets/icon.png",
       "target": [
+        "deb",
         "tar.gz"
       ],
-      "category": "Network"
+      "category": "Network",
+      "maintainer": "Raul <53981240+rOrtiz28@users.noreply.github.com>"
+    },
+    "deb": {
+      "recommends": [
+        "libappindicator3-1",
+        "pulseaudio-utils"
+      ]
     }
   }
 }

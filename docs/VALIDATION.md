@@ -84,7 +84,7 @@ These are the user's observations. No timings, logs, or screenshots were kept as
 
 - **Browser sign-in**, in headless Chrome against the real server running on the Mac with a stand-in account check: a wrong password showed **That user name or password is not correct.** and kept the form with the password selected; the right one opened the session, showed the host's name, and cleared the password field. The page was also checked at phone width.
 - **Host window**, in headless Chrome with a stand-in for the app's main process: the network list read **192.168.1.52 · Wi-Fi** and **172.16.106.1 · Virtual (bridge101)**. When Wi-Fi went away and Ethernet appeared, sharing moved to Ethernet and said so. With no network left, sharing stopped and said it would start again; when Ethernet came back, it did. Opened with no network, as at login, it started sharing once a network appeared. The **Connect from a browser** panel and the new **Browser** setup guide were inspected.
-- **Ubuntu VM**: its bridged adapter `enp2s0` is named **Ethernet**, and the VM runs this branch.
+- **Ubuntu VM**: its bridged adapter `enp2s0` is named **Ethernet**, and the VM runs the new code.
 - **Android**: the APK built, its 8 Java and 4 bridge tests passed, and it was installed on the SM-X230. On the tablet's Wi-Fi the network label read **Wi-Fi**. With the screen off, Android withholds the network from the app and the label reads **No network** until it wakes.
 
 - **Browser sign-in on real devices**: the user connected from Chrome on the Mac to the Ubuntu VM through the browser sign-in and reported that it worked. Chrome first showed `ERR_ADDRESS_UNREACHABLE` while the VM answered HTTP 200 to `curl` from the same Mac; allowing Chrome in **Local Network** fixed it. The browser guide and the README now say so.
@@ -176,7 +176,7 @@ Checked on the Ubuntu VM's Wayland session, driving the app's main process throu
 - **Start Yes Machine when you log in** read off at first. Turned on, it wrote `~/.config/autostart/yes-machine.desktop` with mode 644, running this copy with `--hidden`. Turned off, it removed the entry. It was left off.
 - Started with `--hidden`, the app ran with its page loaded and no window on screen.
 
-The VM's Ubuntu AppIndicators extension had been turned off, so GNOME showed no tray icons at first. With the user's OK it was turned on, and Yes Machine's icon registered with GNOME. The user then checked the icon and its menu on the VM and in the Mac's menu bar, with the Mac app built from this branch, and reported that everything worked.
+The VM's Ubuntu AppIndicators extension had been turned off, so GNOME showed no tray icons at first. With the user's OK it was turned on, and Yes Machine's icon registered with GNOME. The user then checked the icon and its menu on the VM and in the Mac's menu bar, with the Mac app built from the new code, and reported that everything worked.
 
 Not checked yet: Windows, and starting at a real login on each system.
 
@@ -184,7 +184,7 @@ Not checked yet: Windows, and starting at a real login on each system.
 
 The desktop app already opened one viewer window per computer, so several could be open at once. Now the list marks the computers it is connected to, and double-clicking one of them brings its window forward instead of signing in again.
 
-Checked on the Mac with two stand-in computers, real servers on ports 4801 and 4802 with a test account. A separate copy of the app, run from this branch with its own data folder, was driven through its DevTools:
+Checked on the Mac with two stand-in computers, real servers on ports 4801 and 4802 with a test account. A separate copy of the app, run from source with its own data folder, was driven through its DevTools:
 
 - It signed in to both, and two viewer windows were open at once.
 - Both cards read **Connected · 192.168.1.52** with a mint frame.
@@ -213,13 +213,13 @@ Not measured yet: the time to show a frame on the Mac's screen, scrcpy on the sa
 
 ## Controlling an Android tablet from the desktop app (October 11, 2026)
 
-Advanced mode in the desktop app, built on the experiment's server. The app lists the devices adb reaches, and double-clicking one opens a window that decodes its stream with WebCodecs and sends the mouse, wheel and keyboard back. Checked on the Mac with a separate copy of the app run from this branch and driven through its DevTools, and the SM-X230 on its USB-C cable with wireless debugging also on:
+Advanced mode in the desktop app, built on the experiment's server. The app lists the devices adb reaches, and double-clicking one opens a window that decodes its stream with WebCodecs and sends the mouse, wheel and keyboard back. Checked on the Mac with a separate copy of the app run from source and driven through its DevTools, and the SM-X230 on its USB-C cable with wireless debugging also on:
 
 - The tablet was listed once, under its name, with **Android 16** and **USB cable**, although adb reached it both by cable and over Wi-Fi. Opening it connected by cable at 1,920 × 1,200, and its card read **Connected**.
 - A dragged swipe on the home screen ran at 53 frames per second. Wheel scrolling in Brave, **Back**, **Home** and **Recents** worked, and clicking a button left the keyboard on the device's screen.
 - Typing went through the window's hidden text field into a text field in Brave: "Hola mundo" in the computer's layout, accents composed the way macOS composes them (´ then a, ˜ then n), ⌘A selecting everything, Backspace, and the arrows. Ctrl+L, an address and Enter loaded a page in the same tab. The stream server typed ñ á é í ó ú ü Ñ É ç à ê as each accent's dead key followed by the letter; ¿, ¡ and emoji were skipped, because the device's virtual keyboard has no key for them. The tablet's own on-screen keyboard still opened for a text field, because the tablet sees no physical keyboard.
 - The on-screen keyboard: while the window was open, the tablet listed **Yes Machine keyboard** as an alphabetic keyboard, and selecting a text field in Brave opened no on-screen keyboard. Typing from the Mac ("Teclado oculto ñé") showed only Samsung Keyboard's slim suggestion strip for physical keyboards. The first time, Android posted "Yes Machine keyboard configured", English (US); later sessions brought no notice. Turning on **On-screen keyboard** removed the stand-in and the tablet's own keyboard appeared; turning it off hid it again at once. Brave kept its page throughout, and closing the window left no keyboard, notice or server on the tablet.
-- The user then used the installed Mac app, built from this branch, with the tablet and reported that it worked very well. At their request the switch moved to the middle of the bar and the buttons back to its right end.
+- The user then used the installed Mac app, built from the new code, with the tablet and reported that it worked very well. At their request the switch moved to the middle of the bar and the buttons back to its right end.
 - **Settings → Swap Back and Recents** reordered the open window's buttons at once, both ways.
 - Cable or Wi-Fi: with the tablet reached both ways, its card offered **Cable | Wi-Fi**. Chosen, Wi-Fi opened the window as **Connected over Wi-Fi**, with adb's port forward on the wireless connection, and Cable opened it by USB. **Add Android device** said the tablet was connected by cable, with a button to open it. Its Wi-Fi tab showed a pairing code that Chromium's own QR reader read from a screenshot of the dialog as `WIFI:T:ADB;S:yes-machine-…;P:…;;`, and codes from the encoder in versions 1 to 10, one with ñ, ¿ and an emoji, all read back exactly. The user then paired the tablet by scanning the code with it in Wireless debugging, and it connected. A connected Android card now says only **Connected**, since its Cable | Wi-Fi already shows the way, after the user saw "Connected · USB cable" run under the selector.
 - **Screenshot**, with a real click, saved a 1,200 × 1,920 PNG the tablet took of its own screen, named with the tablet's name and the time ("… 2026-10-12 at 00.22.36.png"), and the window said where, with **Show**. The keyboard stayed on the device's screen. The bar fits at every width: below 1,100 pixels the middle buttons keep only their icons.
@@ -281,7 +281,7 @@ Two discovery instances on the Mac found each other over real multicast and remo
 
 General mode works through the Yes Machine app, with Android's own permissions instead of debugging. An experiment first, in a test build, showed it workable on the SM-X230: the app's screen capture ran at 60 frames per second with capture to arrival about 25 ms, as in advanced mode; touches made by the app's accessibility service reached the decoded frame in 110 / 133 ms (typical / 90th percentile), against 57 / 65 ms in advanced mode; the accessibility service's own input method typed any character, ñ, ¿ and emoji included, with no clipboard, and hid the on-screen keyboard without Samsung's suggestion strip; and Back, Home and Recents worked as the system's own actions. It also found that once advanced mode's mirror display was released, the app's capture stopped showing the screen until Android's consent was given again.
 
-The built version, with the Mac app built from this branch:
+The built version, with the Mac app built from the new code:
 
 - The user approved the designs first: **Control from a computer** in the app's Settings, with **General | Advanced** and each mode's steps behind **See instructions**, the dialog that explains advanced mode, the **This tablet** card in each state, and **Allow this computer?**. The app's pages were compared with the approved mockups in each state in Electron at the tablet's size, and in the idle and advanced states on the tablet itself.
 - The user allowed Yes Machine in Accessibility and shared the tablet. Its log showed the sharing service listening over TLS with a key from the Android Keystore and announcing `_yes-machine-device._tcp` with its fingerprint. The Mac listed the tablet, asked to verify its certificate the first time, and the session started once the tablet allowed the Mac.
@@ -300,7 +300,7 @@ Not checked yet: the built general mode's speed (the experiment's numbers are ab
 - **Sound in general mode**: the user tested it with the installed builds and reported that it worked perfectly, and asked for a way to mute it from the computer: the speaker in the window's bar, checked in Electron at 1,280, 1,120 and 1,000 pixels and in full screen, with the choice remembered.
 - **Larger files**, on this Mac's loopback with the real host server, a stand-in account check and the real viewer page in Electron: uploads of 100 MB and 2 GB arrived intact at about 49 MB/s, the page under 190 MB; the fixed pause they had before held them to about 13 MB/s. Downloads went first as base64 over the session socket into blobs in the page: 2 GB arrived at about 90 MB/s, but in a session that keeps blobs in memory, as the desktop app's viewer windows do, 5 GB arrived and couldn't be saved, and in a disk-backed session 10 GB worked with the browser process at 4.6 GB. With each file offered at a one-time address on the host instead, 10 GB went from offer to saved file in 11 s, intact, with the browser process under 350 MB.
 
-The user then tested the installed builds of this branch on October 12 and reported that everything worked.
+The user then tested the installed builds of the new code on October 12 and reported that everything worked.
 
 Not recorded in detail yet: transfers between separate devices and over Wi-Fi, Safari and Firefox, the Android app taking an offered file, general mode's speed in the built app, and a remembered sign-in after restarting the app.
 
@@ -339,7 +339,7 @@ Not checked yet: Windows on a PC with a real graphics card.
 
 ## The viewer's own pointer on Windows (October 12, 2026, prototype)
 
-Checked with `tools/latency`'s harness running this branch in the Windows 11 VM and headless Chrome on the Mac as the viewer:
+Checked with `tools/latency`'s harness running the new code in the Windows 11 VM and headless Chrome on the Mac as the viewer:
 
 - Chromium offers no `cursor` constraint (`getSupportedConstraints()` has none) and reports `cursor: "always"`; a frame read straight from the capture, before encoding, had Windows' arrow in it.
 - With the viewer connected, the frame had no cursor (0 near-white pixels where the arrow had 159), and the viewer's pointer took Windows' shapes: `pointer` over a link, `text` over a text area, `default` over plain text and `none` over a window that hides the cursor. The first shape arrived about 2 s after connecting, while PowerShell starts.
@@ -485,6 +485,26 @@ The code was formatted the standard way, moved into folders by what it does, and
   - With the tablet switched to general mode by the user, the Mac app opened it over Wi-Fi as an always allowed computer. The tablet showed the Mac in control, with both of its connections open, the stream and the files.
   - The tablet app signed in to the Mac over Wi-Fi with its remembered sign-in, with the picture at 1920×1080 and input available.
   - Disconnect ended each session on both sides, and the window that started it said so.
+
+## Version 1.0.1 installers (October 17, 2026)
+
+The installers were built on the Apple silicon Mac from the published code: zips for macOS (Apple silicon and Intel) and Windows (x64 and ARM), tar.gz archives for Linux (x64 and ARM), and the Android APK. Windows and Linux come as folders: the tools for a portable Windows exe and a Linux AppImage don't run on an Apple silicon Mac without Rosetta, and a portable exe runs from a temporary copy that starting at login can't find again.
+
+- **Contents.** Every desktop package holds Electron's and Chromium's licenses, the Android stream server and RobotJS for its own system, and its app archive holds the license, the notices and the fonts' licenses. The Apple silicon Mac app's signature verified. The APK is version 1.0.1 (code 4), signed with the release key (APK Signature Scheme v2 and v3), with its license files.
+- **Linux, on the Ubuntu VM** (24.04 on ARM, Wayland). As extracted, the app stopped at once with "The SUID sandbox helper binary was found, but is not configured correctly", which is why the README says to give `chrome-sandbox` to root first. With the sandbox turned off for the test, the main window opened at version 1.0.1, with native input (RobotJS loaded) and the Wayland session recognized.
+- **Windows, on the Windows VM** (11 on ARM), started over SSH beside the installed app with a profile of its own: the main window loaded at version 1.0.1, with native input. Its log showed an unhandled rejection from the screen capture handler, which answers twice when the capture fails, as it did in that session without a desktop.
+- **Starting at login.** As new copies with profiles of their own, both test copies turned on starting at login for themselves, and every copy of the app shares that entry, so on both VMs it pointed at a test copy that was then removed. The Windows entry was pointed back at the installed app, and the Ubuntu entry, which only the test had made, was removed.
+- **The GitHub release** has the eight files, and the size and SHA-256 of each matched the built file.
+- **Installed:** on the tablet (after removing the debug build, whose signature differs), in the Mac's Applications folder, on the Windows VM in place of 0.2.0, and as source on the Ubuntu VM.
+
+## Version 1.0.2 installers (October 17, 2026)
+
+Version 1.0.2 changes how the apps are installed: a dmg for the Mac, one installer for Windows on x64 and ARM, and a deb for Ubuntu and Debian beside the tar.gz.
+
+- **The deb on the Ubuntu VM** (24.04 on ARM). The user opened it from the desktop and App Center installed it. With no other step, Yes Machine opened from the app list, running from `/opt/Yes Machine`. The install had set up Chromium's sandbox, with `chrome-sandbox` owned by root and an AppArmor profile, `/etc/apparmor.d/yes-machine`, that allows the app's user namespaces. `pulseaudio-utils`, which the deb recommends, was installed, and starting at login pointed at the installed app.
+- **The Windows installer on the Windows VM** (11 on ARM). The first build left out the app's exe and six DLLs on ARM, so its shortcut pointed at nothing. 7-Zip 24.09 compresses ARM64 programs with its ARM64 filter, which the installer's 7z plugin can't unpack; the x64 package uses BCJ2 and was whole. With the app packed as a zip instead, the user's double-click installed and opened 1.0.2: all 135 files, with shortcuts on the desktop and in the Start menu. Starting at login still pointed at the 1.0.1 folder, because that profile had already applied the default, and it was pointed at the installed app.
+- **The dmg** holds the signed app, version 1.0.2, and a link to Applications. The user installed it on the Apple silicon Mac over 1.0.1, and it worked.
+- **The APK** installed over 1.0.1 on the tablet as an update, signed with the same key, keeping the app's data.
 
 ## Checks still required
 

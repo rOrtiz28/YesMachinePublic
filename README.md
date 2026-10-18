@@ -19,7 +19,7 @@
 
 An English-language remote desktop app for devices on the same private network. Run the desktop app on a computer and connect to it from another device's browser, from Yes Machine on another computer, or from the Android app. The desktop app can also control an Android phone or tablet, through the Yes Machine app on it or through Android's USB or Wi-Fi debugging connection.
 
-**Version 1.0.1 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
+**Version 1.0.2 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
 
 ## What it does
 
@@ -70,10 +70,11 @@ Get the file for your system from the [latest release](https://github.com/rOrtiz
 
 | System | File | The first time |
 | --- | --- | --- |
-| macOS, Apple silicon | `…-mac-arm64.zip` | Unzip it and drag **Yes Machine** to Applications. The app isn't notarized by Apple, so macOS stops it the first time: open **System Settings → Privacy & Security** and choose **Open Anyway**. |
-| macOS, Intel | `…-mac-x64.zip` | The same. |
-| Windows 10 or 11 | `…-win-x64.zip`, or `…-win-arm64.zip` on ARM | Extract the folder to a place where it can stay, such as your user folder, and run **Yes Machine.exe** in it. The app isn't signed, so SmartScreen may warn about it: choose **More info → Run anyway**. |
-| Linux | `…-linux-x64.tar.gz`, or `…-linux-arm64.tar.gz` on ARM | Extract it and run `yes-machine` in the folder. On Ubuntu 24.04 and other systems that restrict sandboxes, Chromium's sandbox helper must belong to root first: `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`. Sound needs `pulseaudio-utils`. |
+| macOS, Apple silicon | `…-mac-arm64.dmg` | Open it and drag **Yes Machine** to Applications. The app isn't notarized by Apple, so macOS stops it the first time: open **System Settings → Privacy & Security** and choose **Open Anyway**. |
+| macOS, Intel | `…-mac-x64.dmg` | The same. |
+| Windows 10 or 11, x64 or ARM | `…-win.exe` | Run it: it installs Yes Machine for your account, adds it to the Start menu and opens it. The installer isn't signed, so SmartScreen may warn about it: choose **More info → Run anyway**. To remove it, use **Settings → Apps**. |
+| Ubuntu or Debian | `…-linux-amd64.deb`, or `…-linux-arm64.deb` on ARM | Open it, and App Center installs it; or run `sudo apt install ./` followed by the file's name. Yes Machine then appears among your apps, with Chromium's sandbox and the sound already set up. |
+| Other Linux | `…-linux-x64.tar.gz`, or `…-linux-arm64.tar.gz` on ARM | Extract it and run `yes-machine` in the folder. Where sandboxes are restricted, Chromium's sandbox helper must belong to root first: `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`. Sound needs `pulseaudio-utils`. |
 | Android 8 or later | `…-android.apk` | Open it on the device and allow installing apps from that source. |
 
 ### Run from source

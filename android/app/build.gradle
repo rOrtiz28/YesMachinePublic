@@ -8,8 +8,8 @@ android {
         applicationId 'local.yesmachine.android'
         minSdk 26
         targetSdk 34
-        versionCode 4
-        versionName '1.0.1'
+        versionCode 5
+        versionName '1.0.2'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     buildTypes { release { minifyEnabled false } }
