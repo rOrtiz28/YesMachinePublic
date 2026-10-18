@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="../../../src/windows/host/host.css" />
+    <link rel="stylesheet" href="clipboard.css" />
+    <style>
+      /* Preview only: the Settings page on its own, at the main window's width. */
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+      }
+      .frame-page {
+        padding: 34px 40px 40px;
+      }
+    </style>
+    <script src="../../../public/theme.js"></script>
+    <script src="settings.js" defer></script>
+  </head>
+  <body>
+    <main class="frame-page">
+      <section class="view settings-view" aria-labelledby="settings-title">
+        <h1 id="settings-title" class="page-title">Settings</h1>
+        <div class="settings">
+          <div class="setting">
+            <div>
+              <h2>Share when Yes Machine opens</h2>
+              <p>
+                Start sharing as soon as the app opens, so other computers can sign in right away.
+                Turn it off to press Start sharing yourself.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              role="switch"
+              aria-checked="true"
+              aria-label="Share when Yes Machine opens"
+            ></button>
+          </div>
+          <div class="setting">
+            <div>
+              <h2>Start Yes Machine when you log in</h2>
+              <p>
+                It opens in the background with only its small icon showing, so your other devices
+                can reach this computer right away.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              role="switch"
+              aria-checked="false"
+              aria-label="Start Yes Machine when you log in"
+            ></button>
+          </div>
+          <div class="setting">
+            <div>
+              <h2>Share system audio</h2>
+              <p>Send this computer’s sound to the viewer. Change it before you start sharing.</p>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              role="switch"
+              aria-checked="true"
+              aria-label="Share system audio"
+            ></button>
+          </div>
+          <div class="setting clipboard-setting">
+            <div>
+              <h2>Share the clipboard</h2>
+              <p>
+                Copy on one device and paste on the other while a device is connected, without the
+                Clipboard buttons.
+              </p>
+              <div
+                class="directions"
+                id="clipboard-way"
+                role="radiogroup"
+                aria-label="Which way the clipboard goes"
+              >
+                <div
+                  class="direction-track"
+                  id="clipboard-track"
+                  aria-hidden="true"
+                  style="--stop: 1"
+                ></div>
+                <div class="direction-labels">
+                  <button type="button" role="radio" aria-checked="false" data-way="to">
+                    Only to this computer
+                  </button>
+                  <button type="button" role="radio" aria-checked="true" data-way="both">
+                    Both ways
+                  </button>
+                  <button type="button" role="radio" aria-checked="false" data-way="from">
+                    Only from this computer
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              id="setting-clipboard"
+              role="switch"
+              aria-checked="true"
+              aria-label="Share the clipboard"
+            ></button>
+          </div>
+          <div class="setting">
+            <div>
+              <h2>Swap Back and Recents</h2>
+              <p>
+                Android windows show Recents on the left and Back on the right, the way Samsung
+                devices order them.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              role="switch"
+              aria-checked="false"
+              aria-label="Swap Back and Recents"
+            ></button>
+          </div>
+          <div class="setting">
+            <div>
+              <h2>Saved computers</h2>
+              <p>2 saved computers.</p>
+            </div>
+            <button type="button" class="ghost">Forget all</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

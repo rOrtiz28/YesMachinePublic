@@ -1,0 +1,100 @@
+{
+  "name": "yes-machine",
+  "productName": "Yes Machine",
+  "version": "1.0.1",
+  "description": "Private-network remote desktop with a browser client",
+  "license": "MIT",
+  "main": "src/main/main.cjs",
+  "scripts": {
+    "start": "node scripts/start.cjs",
+    "test": "node --test \"test/**/*.test.cjs\"",
+    "android-stream": "node scripts/build-android-stream.cjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "publish-public": "node scripts/publish-public.cjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@jitsi/robotjs": "0.6.24",
+    "bonjour-service": "1.4.4",
+    "selfsigned": "5.5.0",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "prettier": "3.9.9",
+    "prettier-plugin-java": "2.10.4"
+  },
+  "build": {
+    "appId": "local.yesmachine.desktop",
+    "productName": "Yes Machine",
+    "artifactName": "YesMachine-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**",
+      "public/**",
+      "assets/icon.png",
+      "assets/tray*.png",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "extraResources": [
+      {
+        "from": "android/stream/build/yes-machine-stream.jar",
+        "to": "yes-machine-stream.jar"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/@jitsi/robotjs/**"
+    ],
+    "npmRebuild": false,
+    "beforePack": "scripts/build-android-stream.cjs",
+    "afterPack": "scripts/clean-mac-metadata.cjs",
+    "afterSign": "scripts/sign-mac-local.cjs",
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSScreenCaptureUsageDescription": "Share the screen with a device you pair on your private network.",
+        "NSAudioCaptureUsageDescription": "Send this computer's system audio to your paired viewer.",
+        "NSLocalNetworkUsageDescription": "Connect directly to your devices on your private network.",
+        "NSBonjourServices": [
+          "_yes-machine._tcp"
+        ]
+      },
+      "extraResources": [
+        {
+          "from": "node_modules/electron/dist/LICENSE",
+          "to": "LICENSE.electron.txt"
+        },
+        {
+          "from": "node_modules/electron/dist/LICENSES.chromium.html",
+          "to": "LICENSES.chromium.html"
+        }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        "tar.gz"
+      ],
+      "category": "Network"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+<!-- The Yes Machine logo: the app's mint square with "ym" in Pixelify Sans Bold, traced into exact rectangles.
+     scripts/generate-icons.py renders the desktop icons from this file. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="1024" android:viewportHeight="1024">
+    <group>
+        <path android:fillColor="#8feba7" android:pathData="M277,82H747A195,195 0 0 1 942,277V747A195,195 0 0 1 747,942H277A195,195 0 0 1 82,747V277A195,195 0 0 1 277,82Z" />
+        <path android:fillColor="#0f2416" android:pathData="M492,344h156v44h-156zM676,344h112v44h-112zM492,388h340v28h-340zM192,344h68v132h-68zM376,344h64v132h-64zM192,476h248v28h-248zM240,504h200v44h-200zM768,416h64v176h-64zM492,416h64v176h-64zM628,416h68v176h-68zM376,548h64v60h-64zM192,564h68v44h-68zM192,608h248v28h-248zM240,636h156v44h-156z" />
+    </group>
+</vector>

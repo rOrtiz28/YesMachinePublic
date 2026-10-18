@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Night and Day</title>
+    <script src="../../public/pixel-scene.js"></script>
+    <script src="../../public/pixel-house.js"></script>
+    <script src="day-house.js"></script>
+    <script src="transition.js"></script>
+    <style>
+      /* Prototype only: the button that turns night into day, and the way Sarigüeya and the light cross the house. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+        transition:
+          background-color 1.2s,
+          color 1.2s;
+      }
+      body.day {
+        background: #eef2f5;
+        color: #1d2730;
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 76ch;
+        opacity: 0.75;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 16px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        transition:
+          background-color 1.2s,
+          border-color 1.2s;
+      }
+      body.day .controls button {
+        background: #fff;
+        border-color: #d7dee4;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+      .frame {
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+        overflow: hidden;
+        transition: border-color 1.2s;
+      }
+      body.day .frame {
+        border-color: #d7dee4;
+      }
+
+      .house {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+      .house canvas {
+        position: absolute;
+        inset: 0 auto auto 0;
+        z-index: 0;
+      }
+      .house > :not(canvas) {
+        position: relative;
+        z-index: 1;
+      }
+      .sky {
+        height: 132px;
+        padding: 22px 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .sky h2 {
+        margin: 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+        color: #8feba7;
+        transition: color 0.5s;
+      }
+      .sky p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: #8b98a3;
+        transition: color 0.5s;
+      }
+      .sky.day h2 {
+        color: #16384f;
+      }
+      .sky.day p {
+        color: #2f4d63;
+      }
+      .roof {
+        height: 66px;
+      }
+      .wall {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 26px 22px;
+        align-content: start;
+        padding: 26px 40px 30px 56px;
+      }
+      .band {
+        height: 114px;
+      }
+      .street {
+        height: 132px;
+      }
+
+      /* The app's title bar, as on the desktop: the logo, the network pill, and the light switch right of it: a sun at
+     night, a moon by day, the same height as the pill. */
+      .titlebar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 16px 0 18px;
+        border-bottom: 1px solid #1f2a31;
+        background: #0d1115;
+        transition:
+          background-color 1.2s,
+          border-color 1.2s;
+      }
+      body.day .titlebar {
+        background: #ffffff;
+        border-color: #d7dee4;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: #8feba7;
+        color: #0f2416;
+        font:
+          700 15px/1 'Pixelify Sans',
+          monospace;
+      }
+      .titlebar-end {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 12px;
+        border: 1px solid #2c4a37;
+        border-radius: 8px;
+        background: #132119;
+        color: #8feba7;
+        font-size: 12px;
+        transition:
+          background-color 1.2s,
+          border-color 1.2s,
+          color 1.2s;
+      }
+      .pill i {
+        width: 7px;
+        height: 7px;
+        background: currentColor;
+      }
+      body.day .pill {
+        background: #ecfaf0;
+        border-color: #7fd59a;
+        color: #217a40;
+      }
+      .switch {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: #ffd36b;
+        cursor: pointer;
+        transition:
+          background-color 1.2s,
+          border-color 1.2s,
+          color 0.5s;
+      }
+      .switch:hover {
+        border-color: #8feba7;
+      }
+      body.day .switch {
+        background: #ffffff;
+        border-color: #c9d3dc;
+        color: #2b4a6b;
+      }
+      .switch:disabled {
+        opacity: 0.55;
+        cursor: progress;
+      }
+
+      /* Windows: dark glass at night, white frames by day; each one changes when the light reaches it. */
+      .window {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 56px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        transition:
+          background-color 0.45s,
+          box-shadow 0.45s,
+          color 0.45s;
+        background: rgba(14, 20, 25, 0.94);
+        color: #e6ede8;
+        box-shadow:
+          0 0 0 1px #2b3741,
+          0 6px 0 -2px #1b2329,
+          0 7px 0 -2px #0b1014;
+      }
+      .window.lit {
+        background: #142a1d;
+        box-shadow:
+          0 0 0 1px #2c4a37,
+          0 6px 0 -2px #1b2329,
+          0 7px 0 -2px #0b1014;
+      }
+      .window small {
+        color: #8b98a3;
+        font-size: 11px;
+      }
+      .window b {
+        display: block;
+        font-size: 12px;
+      }
+      .window .led {
+        margin-left: auto;
+        width: 7px;
+        height: 7px;
+        align-self: flex-start;
+        background: #3a454d;
+      }
+      .window.lit .led {
+        background: #8feba7;
+      }
+      .window svg path {
+        fill: currentColor;
+      }
+      .window.day {
+        background: rgba(233, 240, 245, 0.96);
+        color: #1d2730;
+        box-shadow:
+          0 0 0 1px #8d99a5,
+          0 6px 0 -2px #e8edf0,
+          0 7px 0 -2px #9aa6b1;
+      }
+      .window.day.lit {
+        background: #effbf2;
+        box-shadow:
+          0 0 0 1px #4fb873,
+          0 6px 0 -2px #e8edf0,
+          0 7px 0 -2px #9aa6b1;
+      }
+      .window.day small {
+        color: #5b6a76;
+      }
+      .window.day .led {
+        background: #9aa6b1;
+      }
+      .window.day.lit .led {
+        background: #3fbf6a;
+      }
+      .window.add {
+        justify-content: center;
+        border: 2px dashed #3a454d;
+        background: rgba(14, 20, 25, 0.7);
+        box-shadow: none;
+        color: #8b98a3;
+      }
+      .window.add.day {
+        border-color: #8d99a5;
+        background: rgba(246, 248, 250, 0.9);
+        color: #5b6a76;
+        box-shadow: none;
+      }
+
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 80ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.8;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Night and Day</h1>
+        <p>
+          Press the sun at the top right, beside Local. Sarigüeya gets up on the roof and climbs
+          down to the porch while daylight crosses the house; the windows change as the light
+          reaches them. Press the moon to go back. The states still work on either side.
+        </p>
+        <div class="controls" role="group" aria-label="This computer">
+          <button type="button" data-sharing="false" aria-pressed="true">Not sharing</button>
+          <button type="button" data-sharing="true" aria-pressed="false">Sharing</button>
+        </div>
+        <div class="controls" role="group" aria-label="Connection">
+          <button type="button" data-connected="false" aria-pressed="true">Not connected</button>
+          <button type="button" data-connected="true" aria-pressed="false">
+            Connected to or from another computer
+          </button>
+        </div>
+      </header>
+
+      <div class="frame">
+        <header class="titlebar">
+          <div class="brand">
+            <span class="logo">ym</span>
+            <span>yes machine</span>
+          </div>
+          <div class="titlebar-end">
+            <span class="pill">
+              <i></i>
+              Local
+            </span>
+            <button
+              class="switch"
+              id="switch"
+              type="button"
+              aria-label="Switch to day"
+              title="Switch to day"
+            >
+              <svg
+                id="switch-icon"
+                width="20"
+                height="20"
+                viewBox="0 0 10 10"
+                shape-rendering="crispEdges"
+              >
+                <path
+                  fill="currentColor"
+                  d="M4 0h2v2H4zM4 8h2v2H4zM0 4h2v2H0zM8 4h2v2H8zM1 1h1v1H1zM8 1h1v1H8zM1 8h1v1H1zM8 8h1v1H8zM3 3h4v4H3z"
+                />
+              </svg>
+            </button>
+          </div>
+        </header>
+        <section class="house" id="house">
+          <canvas id="art" aria-hidden="true"></canvas>
+          <div class="sky" id="sky">
+            <div>
+              <h2>On your network</h2>
+              <p>Double-click a computer to connect.</p>
+            </div>
+          </div>
+          <div class="roof"></div>
+          <div class="wall" id="wall">
+            <div class="window lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M2 2h8v5H2zM3 3v3h6V3zM0 8h12v2H0z" />
+              </svg>
+              <div>
+                <b>osiris-mac</b>
+                <small>This device</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>osiris-windows</b>
+                <small>192.168.1.54</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>osiris</b>
+                <small>192.168.1.53</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M2 2h8v5H2zM3 3v3h6V3zM0 8h12v2H0z" />
+              </svg>
+              <div>
+                <b>Old-MacBook</b>
+                <small>192.168.1.90</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>Office-PC</b>
+                <small>192.168.1.60</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path d="M3 0h6v12H3zM4 1v9h4V1z" />
+              </svg>
+              <div>
+                <b>Galaxy Tab</b>
+                <small>192.168.1.158</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window add">+ Add device</div>
+          </div>
+          <div class="band"></div>
+          <div class="street" id="street"></div>
+        </section>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>The way down:</b>
+          along the roof to its end, down the stone pillar to the air conditioner, onto the trash
+          can, onto the grass, along the porch, and up onto the balustrade. Back up the same way at
+          night.
+        </li>
+        <li>
+          <b>The light:</b>
+          day comes in from the top left, night from the bottom right, a dithered edge of pixels, so
+          the house never just flips. She turns cream when the light reaches her.
+        </li>
+        <li>
+          <b>Windows and text</b>
+          change as the light reaches them; the page around the house follows.
+        </li>
+        <li>
+          <b>At night</b>
+          the air conditioner and the trash can are there too, in night colors, since she climbs
+          back up by them.
+        </li>
+        <li>
+          <b>The switch</b>
+          sits in the title bar, right of the network pill: a sun at night, a moon by day. Pressed
+          on another page, such as Settings, the mode changes at once, without the walk.
+        </li>
+        <li>
+          <b>About seven seconds</b>
+          each way, at a walk. With reduced motion turned on in the system, it would switch at once.
+        </li>
+      </ul>
+    </main>
+    <script>
+      const box = document.getElementById('house'),
+        wall = document.getElementById('wall'),
+        sky = document.getElementById('sky'),
+        button = document.getElementById('switch');
+      const SUN =
+          'M4 0h2v2H4zM4 8h2v2H4zM0 4h2v2H0zM8 4h2v2H8zM1 1h1v1H1zM8 1h1v1H8zM1 8h1v1H1zM8 8h1v1H8zM3 3h4v4H3z',
+        MOON = 'M4 1h3v1H4zM3 2h2v1H3zM2 3h2v4H2zM3 7h2v1H3zM4 8h3v1H4zM7 7h1v1H7z';
+      // Each window, and the title, turns when the light passes its middle, as the scene's edge does.
+      const reach = (el) => {
+        const b = box.getBoundingClientRect(),
+          r = el.getBoundingClientRect();
+        return (
+          0.86 *
+            ((0.62 * (r.left + r.width / 2 - b.left)) / b.width +
+              (0.38 * (r.top + r.height / 2 - b.top)) / b.height) +
+          0.07
+        );
+      };
+      const scene = DayNight.mount(document.getElementById('art'), {
+        container: box,
+        measure: () => ({
+          width: box.clientWidth,
+          height: box.clientHeight,
+          roofTop: sky.offsetHeight,
+          streetTop: document.getElementById('street').offsetTop,
+        }),
+        onLight: (light) => {
+          for (const el of wall.children) el.classList.toggle('day', light > reach(el));
+          sky.classList.toggle('day', light > reach(sky.firstElementChild));
+          document.body.classList.toggle('day', light > 0.5);
+          if (light === 0 || light === 1) {
+            button.disabled = false;
+            const day = light === 1;
+            button.setAttribute('aria-label', day ? 'Switch to night' : 'Switch to day');
+            button.title = button.getAttribute('aria-label');
+            document.querySelector('#switch-icon path').setAttribute('d', day ? MOON : SUN);
+          }
+        },
+      });
+      const state = { sharing: false, connected: false };
+      scene.setState(state);
+      button.addEventListener('click', () => {
+        button.disabled = true;
+        scene.toggle();
+      });
+      document.querySelectorAll('.controls button').forEach((b) =>
+        b.addEventListener('click', () => {
+          const key = 'sharing' in b.dataset ? 'sharing' : 'connected';
+          b.parentElement
+            .querySelectorAll('button')
+            .forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+          state[key] = b.dataset[key] === 'true';
+          scene.setState(state);
+        }),
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Yes Machine</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/host.css" />
+    <link rel="stylesheet" href="/home.css" />
+    <script src="/theme.js"></script>
+    <script defer src="/pixel-icons.js"></script>
+    <script defer src="/pixel-scene.js"></script>
+    <script defer src="/pixel-house.js"></script>
+    <script defer src="/pixel-day.js"></script>
+    <script defer src="/pixel-home.js"></script>
+    <script defer src="/setup-guides.js"></script>
+    <!-- The home screen's own scripts, beside this page. They share one global scope and run in this order; all but
+         start.js only declare things, and start.js starts the screen. -->
+    <script defer src="/bridge.js"></script>
+    <script defer src="/common.js"></script>
+    <script defer src="/night-and-day.js"></script>
+    <script defer src="/devices.js"></script>
+    <script defer src="/connecting.js"></script>
+    <script defer src="/general-mode.js"></script>
+    <script defer src="/settings.js"></script>
+    <script defer src="/start.js"></script>
+  </head>
+  <body>
+    <!-- The Android app's home screen. MainActivity shows it in a WebView, from files the Android build copies into
+         the app (android/app/build.gradle), all at the app's root: the scripts and home.css beside this page, the
+         desktop app's host.css, and the shared scripts from public/. It reuses the desktop app's main window
+         (src/windows/host/host.html): its styles, with home.css on top for touch, and its network house. The page
+         does no network work itself; bridge.js asks Java for everything through window.YesMachineHome. A new file it
+         loads must also be listed in build.gradle and in MainActivity's localAsset(), which
+         test/android/app-files.test.cjs checks. -->
+    <div class="app">
+      <!-- The title bar. The pill shows the kind of network this device is on (Wi-Fi, Ethernet or Local), or No
+           network (renderNetworkPill in devices.js); the sun or moon switches between night and day
+           (night-and-day.js). -->
+      <header class="titlebar">
+        <div class="brand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <span class="wordmark">yes machine</span>
+        </div>
+        <div class="titlebar-end">
+          <span id="network-pill" class="pill">Local</span>
+          <button
+            type="button"
+            class="theme-toggle"
+            id="theme-toggle"
+            aria-label="Switch to day"
+            title="Switch to day"
+          >
+            <span class="icon" id="theme-icon" data-icon="sun"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- The menu at the side, with a button for each page: Home, the rooftop cat and Settings (setUpPages in
+           common.js). loadInfo in common.js puts the version at the bottom. -->
+      <nav class="sidebar" aria-label="Sections">
+        <button
+          type="button"
+          class="nav-item"
+          id="nav-home"
+          data-view="home"
+          aria-label="Home"
+          aria-current="page"
+        >
+          <span class="icon" data-icon="home"></span>
+        </button>
+        <button
+          type="button"
+          class="nav-item"
+          id="nav-cat"
+          data-view="cat"
+          aria-label="Know the rooftop cat"
+          title="Know the rooftop cat"
+        >
+          <span class="icon" data-icon="cat-face"></span>
+        </button>
+        <button
+          type="button"
+          class="nav-item"
+          id="nav-settings"
+          data-view="settings"
+          aria-label="Settings"
+        >
+          <span class="icon" data-icon="settings"></span>
+        </button>
+        <span id="version" class="version"></span>
+      </nav>
+
+      <!-- The three pages. showView in common.js shows one and hides the others. Android's back button closes an
+           open dialog, or goes back to Home from another page (window.__homeBack, in common.js). -->
+      <main>
+        <!-- Home: the heading, the This device card for general mode, and the house that lists the computers on
+             the network. -->
+        <section id="view-home" class="view" aria-label="Home">
+          <!-- The heading, and a drawing of this device and a computer joined through the ym logo, shown only on
+               wide screens. -->
+          <div class="hero">
+            <div>
+              <h1>
+                Yes,
+                <span>from here.</span>
+              </h1>
+              <p class="lede">Open your computers from this device.</p>
+            </div>
+            <div id="link-art" class="link-art" aria-hidden="true">
+              <span class="icon" data-icon="tablet"></span>
+              <span class="wire">
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+              </span>
+              <span class="logo outline">ym</span>
+              <span class="wire">
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+              </span>
+              <span class="icon" data-icon="laptop"></span>
+            </div>
+          </div>
+
+          <!-- The This device card, for general mode, where this device shares its own screen with a computer. It
+               stays hidden until Java first reports general mode's state; then renderControl in general-mode.js
+               fills it and shows the parts that apply: Accessibility to allow, Share this device, Disconnect it
+               and Stop sharing, the certificate's fingerprint while sharing, and in advanced mode a link to the
+               instructions in Settings. -->
+          <section
+            class="card host-card tablet-card"
+            id="tablet-card"
+            aria-labelledby="tablet-title"
+            hidden
+          >
+            <div class="card-head">
+              <span class="card-icon icon" data-icon="tablet"></span>
+              <div>
+                <h2 id="tablet-title">This device</h2>
+                <p id="tablet-device" class="sub"></p>
+              </div>
+              <span id="tablet-status" class="pill">Not sharing</span>
+            </div>
+            <p id="tablet-text" class="hint"></p>
+            <div id="tablet-permission" class="permission" hidden>
+              <span id="tablet-permission-text">
+                Allow Accessibility so a computer can touch and type here.
+              </span>
+              <button type="button" class="ghost" id="tablet-allow">Allow control</button>
+            </div>
+            <button class="primary" type="button" id="tablet-share">
+              <span class="icon" data-icon="play"></span>
+              <span id="tablet-share-label">Share this device</span>
+              <span class="icon end" data-icon="chevron-right"></span>
+            </button>
+            <div class="actions" id="tablet-actions" hidden>
+              <button class="ghost" type="button" id="tablet-disconnect" hidden>
+                <span class="icon" data-icon="disconnect"></span>
+                <span>Disconnect it</span>
+              </button>
+              <button class="ghost" type="button" id="tablet-stop">
+                <span class="icon" data-icon="stop"></span>
+                <span>Stop sharing</span>
+              </button>
+            </div>
+            <details id="tablet-verify" hidden>
+              <summary id="tablet-verify-label">Verify this device’s certificate</summary>
+              <p class="hint">
+                The first time a computer connects, it shows this fingerprint. Check that both
+                match.
+              </p>
+              <code id="tablet-fingerprint" class="fingerprint"></code>
+            </details>
+            <button
+              type="button"
+              class="link-button see-instructions"
+              id="tablet-instructions"
+              hidden
+            >
+              See instructions ›
+            </button>
+          </section>
+
+          <!-- The house: the list of computers, drawn as the windows of a pixel-art house, as on the desktop. The
+               canvas behind it paints the sky, the roof, the wall and the street, by night or by day
+               (public/pixel-home.js, which start.js mounts). The page's rows set the sizes: the sky holds the
+               list's heading and the refresh button (devices.js), house-roof and house-street are empty rows that
+               the painted roof and street fill, and the cards sit on the wall. -->
+          <section class="house" id="house" aria-labelledby="network-title">
+            <canvas class="house-art" id="house-art" aria-hidden="true"></canvas>
+            <div class="house-sky" id="house-sky">
+              <div class="section-head">
+                <span class="icon" data-icon="network"></span>
+                <div>
+                  <h2 id="network-title">On your network</h2>
+                  <p id="discovery-status" class="sub">
+                    Looking for computers sharing on your network…
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="icon-button"
+                  id="refresh"
+                  aria-label="Refresh the list of computers"
+                  title="Refresh"
+                >
+                  <span class="icon" data-icon="refresh"></span>
+                </button>
+              </div>
+            </div>
+            <div class="house-roof" aria-hidden="true"></div>
+            <div class="house-facade">
+              <!-- The windows, which renderDevices in devices.js draws: every computer this device can connect
+                   to, then Add computer. A tap on a card connects (connecting.js); a computer on another network
+                   that doesn't answer is dimmed, and a tap on it explains why. Show all appears when they don't
+                   fit on two floors, or four rows on a one-column phone. -->
+              <div id="devices" class="devices" role="list" aria-label="Computers"></div>
+              <div class="house-more" id="house-more" hidden>
+                <button type="button" class="ghost" id="show-all">
+                  <span id="show-all-icon" class="icon" data-icon="chevron-down"></span>
+                  <span id="show-all-label">Show all</span>
+                </button>
+              </div>
+            </div>
+            <div class="house-street" id="house-street" aria-hidden="true"></div>
+          </section>
+        </section>
+
+        <!-- The rooftop cat page: Sarigüeya's night scene (public/pixel-scene.js), which common.js creates the
+             first time the page opens and draws only while it is open, and her story. -->
+        <section id="view-cat" class="view cat-view" aria-labelledby="cat-title" hidden>
+          <h1 id="cat-title" class="page-title">Know the rooftop cat</h1>
+          <div class="cat-story">
+            <div class="cat-scene" id="cat-scene">
+              <canvas
+                id="cat-art"
+                role="img"
+                aria-label="Sarigüeya on a ledge at night, watching the city. Tap or click her for a heart."
+              ></canvas>
+            </div>
+            <div class="cat-text">
+              <h2>Sarigüeya</h2>
+              <p class="sub">The rooftop cat · Puerto Rico</p>
+              <p>
+                The cat on the roof is Sarigüeya, a real cat from Puerto Rico. She comes from a town
+                in the center of the island, and what she loves most is watching: the cars going by
+                and everything else that happens on the street below.
+              </p>
+              <p>
+                In Yes Machine she keeps the same watch from the rooftop. She naps while nothing is
+                going on, sits up when a computer is ready to connect, and gets happy when someone
+                connects.
+              </p>
+              <p class="hint">Tap or click her and she’ll send you a heart.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings: a row for each setting. general-mode.js runs the mode and the always allowed computers;
+             settings.js the other Forget all buttons and the setup guides. -->
+        <section
+          id="view-settings"
+          class="view settings-view"
+          aria-labelledby="settings-title"
+          hidden
+        >
+          <h1 id="settings-title" class="page-title">Settings</h1>
+          <div class="settings">
+            <!-- Control from a computer: general or advanced mode, with a summary of the chosen one
+                 (general-mode.js). Advanced asks first, in its own dialog. See instructions opens the chosen
+                 mode's steps below. -->
+            <div class="setting control-setting" id="control-setting">
+              <div class="control-head">
+                <div>
+                  <h2>Control from a computer</h2>
+                  <p id="control-sub">How a computer with Yes Machine sees and uses this device.</p>
+                </div>
+                <div class="guide-tabs" role="radiogroup" aria-label="Mode">
+                  <button type="button" role="radio" id="mode-general" aria-checked="true">
+                    General
+                  </button>
+                  <button type="button" role="radio" id="mode-advanced" aria-checked="false">
+                    Advanced
+                  </button>
+                </div>
+              </div>
+              <p class="mode-summary" id="mode-summary"></p>
+              <!-- General mode's steps, and whether Yes Machine is allowed in Accessibility, with a button to
+                   open it. -->
+              <div class="mode-more" id="mode-general-more" hidden>
+                <ol class="pair-steps">
+                  <!-- prettier-ignore -->
+                  <li>Allow Yes Machine in <b>Accessibility</b>, once. It lets the computer touch, type and use Back, Home and Recents here.</li>
+                  <!-- prettier-ignore -->
+                  <li>Share from the home screen. Each time, Android asks to record the screen: choose <b>Share entire screen</b>.</li>
+                  <li>
+                    On the computer, double-click this device in Yes Machine, then allow it here.
+                  </li>
+                </ol>
+                <div class="mode-state" id="accessibility-state">
+                  <i aria-hidden="true"></i>
+                  <span id="accessibility-text"></span>
+                  <button type="button" class="ghost" id="open-accessibility">
+                    Open Accessibility
+                  </button>
+                </div>
+              </div>
+              <!-- Advanced mode's steps, with a button that opens Android's developer options. -->
+              <div class="mode-more" id="mode-advanced-more" hidden>
+                <ol class="pair-steps">
+                  <!-- prettier-ignore -->
+                  <li>Turn on <b>Developer options</b>: in <b>Settings › About</b>, tap <b>Build number</b> seven times. On Samsung devices it’s under <b>Software information</b>.</li>
+                  <!-- prettier-ignore -->
+                  <li>By cable: in <b>Developer options</b>, turn on <b>USB debugging</b>, plug this device into the computer and allow it.</li>
+                  <!-- prettier-ignore -->
+                  <li>Over Wi-Fi: on the computer, choose <b>Add device › Android device › Wi-Fi</b>. Here, turn on <b>Wireless debugging</b> and tap <b>Pair device with QR code</b>.</li>
+                </ol>
+                <button type="button" class="ghost" id="open-developer">
+                  Open Developer options
+                </button>
+              </div>
+              <button type="button" class="mode-toggle" id="mode-toggle" aria-expanded="false">
+                <span id="mode-toggle-label">See instructions</span>
+                <span class="icon" id="mode-toggle-icon" data-icon="chevron-right"></span>
+              </button>
+            </div>
+            <!-- The computers that may connect in general mode without asking (general-mode.js). Forget all asks
+                 for a second tap, as do the other Forget all buttons. -->
+            <div class="setting">
+              <div>
+                <h2>Allowed computers</h2>
+                <p id="allowed-summary">No computers are always allowed.</p>
+              </div>
+              <button type="button" class="ghost" id="forget-allowed">Forget all</button>
+            </div>
+            <!-- Saved computers, remembered sign-ins and trusted certificates: how many there are, and Forget all.
+                 devices.js counts the saved computers, settings.js the others. -->
+            <div class="setting">
+              <div>
+                <h2>Saved computers</h2>
+                <p id="saved-summary">No saved computers yet.</p>
+              </div>
+              <button type="button" class="ghost" id="forget-all">Forget all</button>
+            </div>
+            <div class="setting">
+              <div>
+                <h2>Remembered sign-ins</h2>
+                <p id="credentials-summary">No remembered sign-ins yet.</p>
+              </div>
+              <button type="button" class="ghost" id="forget-credentials">Forget all</button>
+            </div>
+            <div class="setting">
+              <div>
+                <h2>Trusted certificates</h2>
+                <p id="trusted-summary">No trusted computers yet.</p>
+              </div>
+              <button type="button" class="ghost" id="forget-trusted">Forget all</button>
+            </div>
+            <!-- A button for each guide, which opens the setup guide dialog on it (public/setup-guides.js). -->
+            <div class="setting">
+              <div>
+                <h2>Setup guides</h2>
+                <p>
+                  Step by step: sharing from a Mac, Windows or Linux computer, and connecting from
+                  Android or a browser.
+                </p>
+              </div>
+              <div class="guide-buttons">
+                <button type="button" class="ghost" data-guide="darwin">macOS</button>
+                <button type="button" class="ghost" data-guide="win32">Windows</button>
+                <button type="button" class="ghost" data-guide="linux">Linux</button>
+                <button type="button" class="ghost" data-guide="android">Android</button>
+                <button type="button" class="ghost" data-guide="browser">Browser</button>
+              </div>
+            </div>
+            <!-- loadInfo in common.js fills in the version. -->
+            <div class="setting">
+              <div>
+                <h2>About</h2>
+                <p>
+                  Yes Machine
+                  <span id="about-version"></span>
+                  · MIT license. Pixelify Sans and JetBrains Mono are used under the SIL Open Font
+                  License.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Asks before switching to advanced mode, which needs Android's developer options (general-mode.js). -->
+    <dialog id="advanced-dialog" class="advanced-dialog" aria-labelledby="advanced-title">
+      <div class="dialog-body">
+        <h2 id="advanced-title">Use advanced mode?</h2>
+        <p>
+          Advanced mode is the fastest: a touch from the computer shows up here in about half the
+          time it takes in general mode. It works through Android’s developer options, so it needs a
+          few steps first:
+        </p>
+        <ol class="pair-steps">
+          <li>
+            Turn on
+            <b>Developer options</b>
+            by tapping
+            <b>Build number</b>
+            seven times.
+          </li>
+          <li>
+            Turn on
+            <b>USB debugging</b>
+            for the cable, or
+            <b>Wireless debugging</b>
+            for Wi-Fi.
+          </li>
+          <!-- prettier-ignore -->
+          <li>Connect from the computer: plug in the cable, or pair with the QR code in <b>Add device</b>.</li>
+        </ol>
+        <p class="sub">You can go back to general mode at any time.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="advanced-cancel">Cancel</button>
+          <button type="button" class="primary compact" id="advanced-confirm">
+            Use advanced mode
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <!-- In general mode, a computer asks to control this device: its name, system and address, and Allow or Deny,
+         with Always allow ticked. general-mode.js opens it once for each request; closing it without an answer
+         denies, and an answer given in the notification closes it. -->
+    <dialog id="allow-dialog" class="allow-dialog" aria-labelledby="allow-title">
+      <div class="dialog-body">
+        <h2 id="allow-title">Allow this computer?</h2>
+        <div class="who">
+          <span class="icon" data-icon="laptop"></span>
+          <div>
+            <strong id="allow-name"></strong>
+            <small id="allow-detail"></small>
+          </div>
+        </div>
+        <p id="allow-text"></p>
+        <label class="check">
+          <input type="checkbox" id="allow-always" checked />
+          Always allow this computer
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="allow-deny">Deny</button>
+          <button type="button" class="primary compact" id="allow-yes">Allow</button>
+        </div>
+      </div>
+    </dialog>
+    <!-- Add computer, by its private address (port 4777 unless another is given) and an optional name
+         (devices.js). It is saved and gets a card with a cat badge. -->
+    <dialog id="add-dialog" aria-labelledby="add-title">
+      <form id="add-form" novalidate>
+        <h2 id="add-title">Add a computer</h2>
+        <p class="sub">Use the private address shown in Yes Machine on that computer.</p>
+        <label class="field-label" for="add-address">Address</label>
+        <input
+          id="add-address"
+          placeholder="192.168.29.100"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="21"
+          inputmode="decimal"
+          required
+        />
+        <label class="field-label" for="add-name">
+          Name
+          <span>optional</span>
+        </label>
+        <input id="add-name" placeholder="Living room PC" maxlength="64" autocomplete="off" />
+        <p id="add-error" class="error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="add-cancel">Cancel</button>
+          <button type="submit" class="primary compact" id="add-save">Save computer</button>
+        </div>
+      </form>
+    </dialog>
+    <!-- The sign-in dialog, for an account on the computer being connected to. connecting.js opens it when no
+         password is remembered for that computer, or the remembered one failed, and checks what is typed. Remember
+         keeps the password encrypted on this device, when it can store it securely. -->
+    <dialog id="login-dialog" aria-labelledby="login-title">
+      <form id="login-form" novalidate>
+        <h2 id="login-title">Sign in</h2>
+        <p class="sub">
+          Use that computer’s account, the same user name and password you use to log in to it.
+        </p>
+        <label class="field-label" for="login-user">User name</label>
+        <input
+          id="login-user"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          maxlength="64"
+        />
+        <label class="field-label" for="login-password">Password</label>
+        <div class="password-field">
+          <input
+            id="login-password"
+            type="password"
+            autocomplete="current-password"
+            maxlength="1024"
+          />
+          <button
+            type="button"
+            class="reveal"
+            id="login-reveal"
+            data-reveal="login-password"
+            aria-label="Show password"
+            aria-pressed="false"
+          >
+            <span class="icon" data-icon="eye"></span>
+          </button>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="login-remember" />
+          Remember on this device
+        </label>
+        <p id="login-remember-note" class="hint" hidden>
+          This device can’t store the password securely, so it can’t be remembered.
+        </p>
+        <p id="login-error" class="error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="login-cancel">Cancel</button>
+          <button type="submit" class="primary compact" id="login-submit">Connect</button>
+        </div>
+      </form>
+    </dialog>
+    <!-- Shown when the viewer's session ended on its own: why, and what to check. showEnded in connecting.js
+         opens it and closes it after 7 seconds; when the person disconnected, a short message says so instead. -->
+    <dialog id="ended-dialog" aria-labelledby="ended-title">
+      <div class="dialog-body">
+        <span class="icon ended-icon" data-icon="disconnect"></span>
+        <h2 id="ended-title">Disconnected</h2>
+        <p id="ended-detail" class="sub">
+          The connection ended. Check that Yes Machine is still open on that computer, then tap it
+          to connect again.
+        </p>
+        <div class="dialog-actions">
+          <button type="button" class="primary compact" id="ended-ok">OK</button>
+        </div>
+      </div>
+    </dialog>
+    <!-- An explanation that needs more room than a message, such as why a computer on another network can't be
+         reached (showInfo in common.js). -->
+    <dialog id="info-dialog" aria-labelledby="info-title">
+      <div class="dialog-body">
+        <span class="icon ended-icon" data-icon="alert"></span>
+        <h2 id="info-title"></h2>
+        <p id="info-text" class="sub"></p>
+        <div class="dialog-actions">
+          <button type="button" class="primary compact" id="info-ok">OK</button>
+        </div>
+      </div>
+    </dialog>
+    <!-- The certificate check before the first connection to a computer, and whenever its certificate changed
+         (confirmTrust in connecting.js). Trust and connect stays disabled until the box is ticked. -->
+    <dialog id="trust-dialog" aria-labelledby="trust-title">
+      <div class="dialog-body">
+        <h2 id="trust-title">Verify this computer</h2>
+        <p id="trust-text" class="sub"></p>
+        <p id="trust-host" class="trust-host"></p>
+        <code id="trust-fingerprint" class="fingerprint"></code>
+        <label class="check">
+          <input type="checkbox" id="trust-check" />
+          I compared it and it matches.
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="trust-cancel">Cancel</button>
+          <button type="button" class="primary compact" id="trust-confirm" disabled>
+            Trust and connect
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <!-- The setup guide dialog, which public/setup-guides.js fills and opens: a tab for each system, and its
+         steps. -->
+    <dialog id="guide-dialog" class="guide-dialog" aria-labelledby="guide-title">
+      <div class="dialog-body">
+        <h2 id="guide-title">Setup guide</h2>
+        <div id="guide-tabs" class="guide-tabs" role="tablist" aria-label="Platform"></div>
+        <p id="guide-intro" class="sub"></p>
+        <ol id="guide-steps" class="guide-steps"></ol>
+        <div class="dialog-actions">
+          <button type="button" class="primary compact" id="guide-ok">Done</button>
+        </div>
+      </div>
+    </dialog>
+    <!-- Short messages at the bottom of the screen, shown by notice() in common.js for 7 seconds, or 12 for an
+         error. -->
+    <p id="message" class="toast" role="status" aria-live="polite"></p>
+  </body>
+</html>

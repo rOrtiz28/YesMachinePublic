@@ -1,0 +1,5 @@
+// The Android build: one app module (app/), built with the Android Gradle Plugin.
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath 'com.android.tools.build:gradle:8.1.2' }
+}

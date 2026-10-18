@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Yes Machine</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/host.css" />
+    <link rel="stylesheet" href="/home.css" />
+    <link rel="stylesheet" href="/share.css" />
+    <script src="/theme.js"></script>
+    <script defer src="/pixel-icons.js"></script>
+    <script defer src="/share.js"></script>
+  </head>
+  <body class="share">
+    <!-- The Android app's Share dialog. Choosing Share, then Yes Machine, in another app opens ShareActivity, which
+         shows this page in a see-through WebView over that app, sends the files to the computer controlling this
+         device and says how it's going. share.js shows each state Java pushes (window.__share) and answers through
+         window.YesMachineShare. The styles are the desktop app's host.css and the home screen's home.css, which the
+         Android build copies in, then share.css; theme.js sets night or day first. A new file it loads must also be
+         listed in build.gradle and in ShareActivity's asset(), which test/android/app-files.test.cjs checks. -->
+    <!-- Dims the other app around the dialog, which opens without being modal and so has no backdrop. -->
+    <div class="scrim"></div>
+    <!-- The dialog, open from the start: its title, the file with its size, the progress bar while a file is
+         prepared or sent, a line of text, and the buttons, which share.js replaces for each state. -->
+    <dialog id="share-dialog" class="allow-dialog send-dialog" open aria-labelledby="share-title">
+      <div class="dialog-body">
+        <h2 id="share-title">Sending</h2>
+        <div class="who" id="share-file" hidden>
+          <span class="icon" data-icon="file"></span>
+          <div>
+            <strong id="file-name"></strong>
+            <small id="file-detail"></small>
+          </div>
+        </div>
+        <div id="share-progress" class="send-progress">
+          <progress id="progress" max="100" value="0" aria-label="How much has gone"></progress>
+          <span class="hint" id="progress-text"></span>
+        </div>
+        <p id="share-text"></p>
+        <div class="dialog-actions" id="share-actions"></div>
+      </div>
+    </dialog>
+  </body>
+</html>

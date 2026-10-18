@@ -1,0 +1,51 @@
+apply plugin: 'com.android.application'
+
+// The Android app. It runs on Android 8.0 (API 26) and later. The version follows the desktop app's (package.json).
+android {
+    namespace 'local.yesmachine.android'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'local.yesmachine.android'
+        minSdk 26
+        targetSdk 34
+        versionCode 4
+        versionName '1.0.1'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildTypes { release { minifyEnabled false } }
+    sourceSets { main { assets.srcDir layout.buildDirectory.dir('generated/viewerAssets') } }
+}
+
+dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// The pages the app shows are copied into its assets before every build: the browser viewer and the pixel art
+// from public/, the desktop app's host.css (the home page builds on it), and the app's own pages and bridge.
+// MainActivity and ShareActivity serve each page only the files it asks for.
+tasks.register('syncViewerAssets', Sync) {
+    from('../../public') {
+        include 'client.html', 'keys.js', 'style.css', 'pixel-icons.js', 'pixel-scene.js', 'pixel-house.js'
+        include 'pixel-day.js', 'pixel-home.js', 'setup-guides.js', 'theme.js', 'fonts/*.woff2'
+        include 'fonts/OFL-PixelifySans.txt', 'fonts/OFL-JetBrainsMono.txt'
+        include 'client/common.js', 'client/cats.js', 'client/session.js', 'client/stream.js', 'client/sign-in.js'
+        include 'client/screens.js', 'client/pointer.js', 'client/keyboard.js', 'client/clipboard.js'
+        include 'client/files.js', 'client/layout.js', 'client/start.js'
+    }
+    from('../../src/windows/host') { include 'host.css' }
+    // The app's license and the notices of the software it includes, which their licenses ask to come with it.
+    from('../..') { include 'LICENSE', 'THIRD_PARTY_NOTICES.md' }
+    from('src/main/viewer') { include 'android-bridge.js' }
+    from('src/main/home') {
+        include 'home.html', 'home.css', 'bridge.js', 'common.js', 'night-and-day.js', 'devices.js'
+        include 'connecting.js', 'general-mode.js', 'settings.js', 'start.js'
+    }
+    from('src/main/share') { include 'share.html', 'share.js', 'share.css' }
+    into layout.buildDirectory.dir('generated/viewerAssets')
+    // The viewer gets the bridge to the app's Java (android-bridge.js) just before its own scripts, so it runs first.
+    filesMatching('client.html') {
+        filter { line -> line.replace('<script src="/client/common.js" defer></script>', '<script src="/android-bridge.js" defer></script>\n    <script src="/client/common.js" defer></script>') }
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'syncViewerAssets' }

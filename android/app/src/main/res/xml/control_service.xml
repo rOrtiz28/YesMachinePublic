@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ControlService's settings: it performs gestures (touches and swipes), and it can type as an input method into
+     the focused field (flagInputMethodEditor, from Android 13). The description is what Accessibility settings show. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/control_description"
+    android:canPerformGestures="true"
+    android:accessibilityFlags="flagInputMethodEditor"
+    android:notificationTimeout="0" />

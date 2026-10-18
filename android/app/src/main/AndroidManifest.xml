@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Yes Machine Android app: the home screen and the viewer (MainActivity), general mode's screen sharing
+     (ShareService) and control (ControlService), the share sheet entry (ShareActivity), and advanced mode's file
+     notice (FileReceiver). docs/ARCHITECTURE.md describes each class. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The network: connections to computers, the device's current network, and mDNS discovery, which needs Wi-Fi's
+         multicast lock. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- General mode: sharing the screen from a foreground service, its notifications (and those of arriving files),
+         and the sound the device's apps play, which Android captures under the same consent. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- No backups or device transfers (data_extraction_rules.xml), so approved certificates and remembered sign-ins
+         stay on this device, and no plain HTTP. -->
+    <application android:label="Yes Machine" android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher" android:theme="@style/AppTheme"
+        android:allowBackup="false" android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="false"
+        android:supportsRtl="true">
+        <!-- The app's only screen, with the home page or the viewer. It handles rotation, keyboards and the night or
+             day mode itself, so a session in the viewer goes on through them. -->
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop"
+            android:configChanges="orientation|keyboard|keyboardHidden|navigation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- General mode's screen sharing. Advanced mode turns it off, and its intent filter lets the shell over adb see
+             which mode the app is in: Yes Machine on a computer won't start advanced mode while this is on. -->
+        <service android:name=".ShareService" android:exported="false" android:foregroundServiceType="mediaProjection">
+            <intent-filter><action android:name="local.yesmachine.android.SHARE_SCREEN" /></intent-filter>
+        </service>
+        <!-- Share, then Yes Machine, from any app: the files go to the computer controlling this device. -->
+        <activity android:name=".ShareActivity" android:exported="true" android:theme="@style/YesMachine.Share"
+            android:excludeFromRecents="true" android:taskAffinity="" android:launchMode="standard"
+            android:configChanges="orientation|keyboard|keyboardHidden|navigation|screenSize|screenLayout|smallestScreenSize|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+        <!-- Advanced mode's server, running as the shell, says a computer's file arrived; only the shell and the system
+             hold DUMP. -->
+        <receiver android:name=".FileReceiver" android:exported="true" android:permission="android.permission.DUMP">
+            <intent-filter><action android:name="local.yesmachine.android.FILE_RECEIVED" /></intent-filter>
+        </receiver>
+        <!-- General mode's hands: the accessibility service that touches and types for the computer in control. The
+             person turns it on in Android's Accessibility settings (control_service.xml). -->
+        <service android:name=".ControlService" android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/control_service" />
+        </service>
+    </application>
+</manifest>

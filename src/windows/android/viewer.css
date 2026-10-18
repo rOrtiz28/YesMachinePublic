@@ -1,0 +1,301 @@
+/* The desktop app's window for an Android device: src/windows/android/viewer.html, run by viewer.js. The window loads
+   the viewer's style sheet (public/style.css) first and this file after it. Every selector here starts with
+   .android, the class on the window's session element.
+
+   The device's screen is a canvas, centered at its own shape in a thin device frame. The bar has the device's name on
+   the left; the on-screen keyboard switch, full screen, hide bars, screenshot, files and sound in the middle; and the
+   device's buttons and Disconnect on the right. With the bars hidden or in full screen the screen goes edge to edge,
+   with style.css's small bar at the top. The Files drawer sits beside the screen as in the computer viewer, floating
+   over it with the bars hidden or in full screen. Light mode follows style.css. */
+
+/* --- Fonts -------------------------------------------------------------------------------------------------------- */
+
+/* The same fonts as style.css, by their place in the repository. style.css loads them from /fonts/, which the
+   computer's server answers, but this window opens from the app's own files, where that path leads nowhere. */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url(../../../public/fonts/pixelify-sans-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+
+/* --- The bar ------------------------------------------------------------------------------------------------------ */
+
+/* Three columns: the name, the middle buttons and the device's buttons. The middle buttons stay centered while there
+   is room. The right column never shrinks below its buttons, so in a narrow window the middle ones move left and the
+   name shortens instead of anything overlapping. As the window narrows the labels go in order: the middle buttons'
+   first, as their icons are the usual ones, then the device buttons', and Disconnect's last (style.css, at 900px),
+   as in the computer viewer. */
+.android .vbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+}
+.android .vbrand {
+  margin-right: 0;
+}
+.android .vcenter {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.android .vtools {
+  grid-column: 3;
+  justify-self: end;
+}
+@media (max-width: 1700px) {
+  .android .vcenter .label {
+    display: none;
+  }
+}
+@media (max-width: 1230px) {
+  .android .vtools .tool .label {
+    display: none;
+  }
+}
+
+/* --- Sound, screenshots and notices ------------------------------------------------------------------------------- */
+
+/* The speaker looks like the bar's other buttons, not like a pressed one; its icon says whether the sound plays
+   here. */
+.android .sound-toggle[aria-pressed] {
+  border-color: transparent;
+}
+.android .sound-toggle[aria-pressed]:not(:hover) {
+  color: var(--muted);
+  background: none;
+}
+/* A screenshot flashes the screen white for a moment, like a camera. viewer.js restarts the flash for each one. */
+.android .device-stage.flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: shutter 0.32s steps(4) forwards;
+}
+@keyframes shutter {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .android .device-stage.flash::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+/* Notices sit just above the status strip. One after a screenshot has Show, which opens its folder; an error never
+   does. */
+.android .notice {
+  bottom: calc(46px + env(safe-area-inset-bottom));
+}
+.android .notice.error #notice-show {
+  display: none;
+}
+
+/* --- Hide bars and full screen ------------------------------------------------------------------------------------ */
+
+/* style.css hides the bar in full screen too, but .android .vbar's display: grid above outranks that rule, so it is
+   hidden again here. The screen fills the black stage without its frame; the second selector outranks the focus ring
+   rule below, so no ring shows while typing either. */
+.android.fullscreen .vbar {
+  display: none;
+}
+.android.fullscreen .device-stage {
+  padding: 0;
+  background: #000;
+}
+.android.fullscreen .device-screen,
+.android.fullscreen .device-stage:has(.typing:focus) .device-screen {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- On-screen keyboard switch ------------------------------------------------------------------------------------ */
+
+/* A small on/off switch inside the bar's button. On lets the device show its own keyboard when a text field is
+   selected. */
+.android .keyboard-switch[aria-checked='true'] {
+  color: var(--text);
+}
+.android .switch {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--field);
+}
+.android .switch::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 10px;
+  height: 10px;
+  background: var(--faint);
+  transition: transform 0.16s steps(3);
+}
+.android .keyboard-switch[aria-checked='true'] .switch {
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.android .keyboard-switch[aria-checked='true'] .switch::after {
+  transform: translateX(14px);
+  background: var(--mint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .android .switch::after {
+    transition: none;
+  }
+}
+
+/* --- The device's screen and Files -------------------------------------------------------------------------------- */
+
+/* The stage, where the screen is centered beside the drawer. */
+.android .device-stage {
+  flex: 1;
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  background: radial-gradient(#101a15, #05080a 75%);
+}
+/* The Files button is mint while the drawer is open. */
+.android .files-toggle[aria-pressed='true'] {
+  color: var(--mint);
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+/* While files are dragged over the window, the screen says where they go. */
+.android .drop-target {
+  position: absolute;
+  inset: 14px;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  border: 2px dashed var(--mint);
+  border-radius: 16px;
+  background: #05080ad9;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+.android .drop-target[hidden] {
+  display: none;
+}
+.android .drop-target .icon svg {
+  width: 56px;
+  height: 56px;
+  color: var(--mint);
+}
+.android .drop-target strong {
+  color: var(--text);
+  font: 700 24px/1.15 var(--display);
+}
+/* A line per file in the drawer, newest first: a file icon, the name, then its size and what happened. */
+.android .download .icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--art);
+}
+.android .download b {
+  font-weight: 500;
+  color: var(--text);
+}
+/* The canvas that viewer.js draws the device's frames on. Its 10px frame counts in its size (border-box), and
+   viewer.js's fit() adds it back after scaling the picture to the stage. */
+.android .device-screen {
+  display: block;
+  box-sizing: border-box;
+  border: 10px solid #1a2229;
+  border-radius: 18px;
+  background: #000;
+  box-shadow:
+    0 0 0 1px #2b3741,
+    0 18px 40px #0008;
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+}
+/* A mint ring while the typing field has focus, so keys go to the device. */
+.android .device-stage:has(.typing:focus) .device-screen {
+  box-shadow:
+    0 0 0 2px var(--mint),
+    0 18px 40px #0008;
+}
+/* Receives what you type, so the computer's keyboard layout and accents apply; the device shows the result. It is
+   invisible and takes no clicks. */
+.android .typing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  resize: none;
+  pointer-events: none;
+  caret-color: transparent;
+}
+/* The waiting screen, over the stage until the first frame, and the status strip in the last row. */
+.android .wait {
+  border-radius: 0;
+}
+.android .vstrip {
+  grid-row: 3;
+}
+
+/* --- Light mode --------------------------------------------------------------------------------------------------- */
+
+/* A light stage, and the device in the monitor's white frame. Full screen stays black. */
+@media (prefers-color-scheme: light) {
+  .android .device-stage {
+    background: radial-gradient(#ffffff, #e3e9ee 75%);
+  }
+  .android .device-screen {
+    border-color: #fbfcfd;
+    box-shadow:
+      0 0 0 2px #9aa6b1,
+      0 18px 40px #1d273030;
+  }
+  .android .device-stage:has(.typing:focus) .device-screen {
+    box-shadow:
+      0 0 0 2px var(--mint),
+      0 18px 40px #1d273030;
+  }
+  .android .drop-target {
+    background: #ffffffe0;
+  }
+}

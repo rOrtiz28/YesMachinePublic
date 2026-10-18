@@ -1,0 +1,247 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Android probe</title>
+<script>
+  'use strict';
+  // Test only: decodes the device's H.264 stream with WebCodecs and times touches until their result shows up.
+  // main.cjs opens this page in a hidden window with Node available, and passes the forwarded port and the number of
+  // rounds in the address. The page talks to the stream server itself over that port: it reads the stream (the
+  // header, then video, pong and type 3 messages, the same format measure.cjs reads), sends touches, and reports the
+  // result to main.cjs over IPC ('done', or 'failed' with a message).
+  const net = require('node:net');
+  const { ipcRenderer } = require('electron');
+  const query = new URLSearchParams(location.search);
+  const rounds = Number(query.get('rounds') || 40);
+  const socket = net.connect(Number(query.get('port')), '127.0.0.1');
+  socket.setNoDelay(true);
+
+  let buffer = new Uint8Array(0),
+    header = null,
+    config = null,
+    decoder = null;
+  // When each frame went into the decoder, by its timestamp, and how long each one took to come out.
+  const inputTimes = new Map(),
+    decodeTimes = [];
+  // The color a measurement is waiting for: { white, resolve }, or null.
+  let waiting = null,
+    frames = 0;
+
+  // --- Reading a frame's color ---
+
+  // The middle 32 × 32 pixels of a decoded frame, averaged to one brightness value.
+  const probe = new OffscreenCanvas(32, 32),
+    context = probe.getContext('2d', { willReadFrequently: true });
+  function brightness(frame) {
+    context.drawImage(
+      frame,
+      frame.displayWidth / 2 - 16,
+      frame.displayHeight / 2 - 16,
+      32,
+      32,
+      0,
+      0,
+      32,
+      32,
+    );
+    const data = context.getImageData(0, 0, 32, 32).data;
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2];
+    return sum / (data.length / 4) / 3;
+  }
+
+  // --- Decoding ---
+
+  /**
+   * The WebCodecs codec name for the stream, avc1.PPCCLL: the profile, constraint flags and level bytes that follow
+   * the sequence parameter set's NAL header (type 7, after a 00 00 01 start code) in the codec configuration.
+   */
+  function codecString(sps) {
+    for (let i = 0; i + 4 < sps.length; i++) {
+      if (sps[i] === 0 && sps[i + 1] === 0 && sps[i + 2] === 1 && (sps[i + 3] & 0x1f) === 7) {
+        const hex = (value) => value.toString(16).padStart(2, '0');
+        return `avc1.${hex(sps[i + 4])}${hex(sps[i + 5])}${hex(sps[i + 6])}`;
+      }
+    }
+    throw Error('No SPS in the codec configuration.');
+  }
+
+  /**
+   * Creates the hardware decoder for the codec configuration received. Each decoded frame records its decode time
+   * and, while a measurement waits for a color, settles it once the middle of the frame is white or black enough.
+   */
+  function setUpDecoder() {
+    decoder = new VideoDecoder({
+      output(frame) {
+        const now = performance.now();
+        const sent = inputTimes.get(frame.timestamp);
+        if (sent !== undefined) {
+          decodeTimes.push(now - sent);
+          inputTimes.delete(frame.timestamp);
+        }
+        frames++;
+        if (waiting) {
+          const value = brightness(frame);
+          if (waiting.white ? value > 170 : value < 85) {
+            const done = waiting;
+            waiting = null;
+            done.resolve(now);
+          }
+        }
+        frame.close();
+      },
+      error(error) {
+        ipcRenderer.send('failed', `Decoder error: ${error.message}`);
+      },
+    });
+    decoder.configure({
+      codec: codecString(config),
+      hardwareAcceleration: 'prefer-hardware',
+      optimizeForLatency: true,
+    });
+  }
+
+  /**
+   * Handles one video message. Flag 2 marks the codec configuration (the SPS and PPS), which is kept and starts the
+   * decoder; flag 1 marks a key frame, which goes to the decoder with the configuration in front of it.
+   */
+  function video(pts, flags, data) {
+    if (flags & 2) {
+      config = data.slice();
+      if (!decoder) setUpDecoder();
+      return;
+    }
+    if (!decoder) return;
+    const key = (flags & 1) !== 0;
+    let chunk = data;
+    if (key) {
+      chunk = new Uint8Array(config.length + data.length);
+      chunk.set(config);
+      chunk.set(data, config.length);
+    }
+    inputTimes.set(pts, performance.now());
+    decoder.decode(
+      new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: pts, data: chunk }),
+    );
+  }
+
+  // --- Reading the stream ---
+
+  // Takes every complete message off the front of the buffer, and waits for more data when one is incomplete. Only
+  // video is used; pongs and type 3 messages are skipped.
+  socket.on('data', (chunk) => {
+    const joined = new Uint8Array(buffer.length + chunk.length);
+    joined.set(buffer);
+    joined.set(chunk, buffer.length);
+    buffer = joined;
+    const view = () => new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    while (true) {
+      if (!header) {
+        if (buffer.length < 16) return;
+        const length = view().getInt32(12);
+        if (buffer.length < 16 + length) return;
+        header = { width: view().getInt32(4), height: view().getInt32(8) };
+        buffer = buffer.subarray(16 + length);
+        continue;
+      }
+      if (buffer.length < 1) return;
+      const type = buffer[0];
+      if (type === 1) {
+        if (buffer.length < 14) return;
+        const size = view().getInt32(10);
+        if (buffer.length < 14 + size) return;
+        video(Number(view().getBigInt64(1)), buffer[9], buffer.subarray(14, 14 + size));
+        buffer = buffer.subarray(14 + size);
+      } else if (type === 2) {
+        if (buffer.length < 17) return;
+        buffer = buffer.subarray(17);
+      } else if (type === 3) {
+        if (buffer.length < 5) return;
+        const length = view().getInt32(1);
+        if (buffer.length < 5 + length) return;
+        buffer = buffer.subarray(5 + length);
+      } else {
+        ipcRenderer.send('failed', `Unknown message type ${type}`);
+        return;
+      }
+    }
+  });
+
+  // --- Touching and measuring ---
+
+  /** Sends a touch (type 4) at the middle of the screen: action 0 is down and 1 is up. */
+  function touch(action) {
+    const message = Buffer.alloc(10);
+    message.writeUInt8(4, 0);
+    message.writeUInt8(action, 1);
+    message.writeFloatBE(0.5, 2);
+    message.writeFloatBE(0.5, 6);
+    socket.write(message);
+  }
+
+  /** Resolves with the time a decoded frame turns white (or black), or with null after `timeout` milliseconds. */
+  function until(white, timeout = 3000) {
+    return new Promise((resolve) => {
+      waiting = { white, resolve };
+      setTimeout(() => {
+        if (waiting && waiting.resolve === resolve) {
+          waiting = null;
+          resolve(null);
+        }
+      }, timeout);
+    });
+  }
+
+  /** A percentile (0 to 100) of the values that aren't null, to a tenth, or null when there are none. */
+  const pct = (values, percentile) => {
+    const sorted = values.filter((value) => value != null).sort((a, b) => a - b);
+    return sorted.length
+      ? +sorted[
+          Math.min(sorted.length - 1, Math.floor((percentile / 100) * sorted.length))
+        ].toFixed(1)
+      : null;
+  };
+
+  // Wait up to 10 seconds for the first codec configuration, start from a released screen, then press and release
+  // in turn, with a random pause of 120 to 280 ms after each change.
+  (async () => {
+    for (let i = 0; i < 100 && !decoder; i++)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!decoder) {
+      ipcRenderer.send('failed', 'No video arrived.');
+      return;
+    }
+    touch(1);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const down = [],
+      up = [];
+    for (let i = 0; i < rounds; i++) {
+      let started = performance.now();
+      touch(0);
+      const shown = await until(true);
+      down.push(shown == null ? null : shown - started);
+      await new Promise((resolve) => setTimeout(resolve, 120 + Math.random() * 160));
+      started = performance.now();
+      touch(1);
+      const cleared = await until(false);
+      up.push(cleared == null ? null : cleared - started);
+      await new Promise((resolve) => setTimeout(resolve, 120 + Math.random() * 160));
+    }
+    const all = [...down, ...up];
+    ipcRenderer.send('done', {
+      stream: header,
+      decoder: decoder.state,
+      frames,
+      touchToDecodedMs: {
+        n: all.filter((value) => value != null).length,
+        missed: all.filter((value) => value == null).length,
+        min: pct(all, 0),
+        p50: pct(all, 50),
+        p90: pct(all, 90),
+        max: pct(all, 100),
+      },
+      pressMs: { p50: pct(down, 50), p90: pct(down, 90) },
+      releaseMs: { p50: pct(up, 50), p90: pct(up, 90) },
+      decodeMs: { p50: pct(decodeTimes, 50), p90: pct(decodeTimes, 90) },
+    });
+  })();
+</script>

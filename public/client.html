@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d1115" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eef2f5" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Yes Machine</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/pixel-icons.js" defer></script>
+    <script src="/pixel-scene.js" defer></script>
+    <script src="/keys.js" defer></script>
+    <!-- The viewer's own scripts (public/client/). They share one global scope and run in this order; all but
+         start.js only declare things, and start.js starts the viewer. -->
+    <script src="/client/common.js" defer></script>
+    <script src="/client/cats.js" defer></script>
+    <script src="/client/session.js" defer></script>
+    <script src="/client/stream.js" defer></script>
+    <script src="/client/sign-in.js" defer></script>
+    <script src="/client/screens.js" defer></script>
+    <script src="/client/pointer.js" defer></script>
+    <script src="/client/keyboard.js" defer></script>
+    <script src="/client/clipboard.js" defer></script>
+    <script src="/client/files.js" defer></script>
+    <script src="/client/layout.js" defer></script>
+    <script src="/client/start.js" defer></script>
+  </head>
+  <body>
+    <!-- The viewer: the page that shows a sharing computer's screen and controls it. The computer's own server
+         (src/main/sharing/server.cjs) serves it to browsers, the desktop app's viewer windows load it from the
+         computer they show, and the Android app bundles it; the apps open it with a one-time ticket in the address,
+         so it skips the sign-in. Its scripts are in public/client/, with public/keys.js for the keys, and its styles
+         are public/style.css. A new file it loads must also be listed in server.cjs, android/app/build.gradle and
+         MainActivity. The Android build adds android-bridge.js by matching the client/common.js script line
+         exactly, so leave that line as it is. -->
+    <!-- Both screens start hidden; client/start.js shows the right one, so the desktop and Android apps, which open
+         the page with a ticket, never flash the sign-in form. -->
+    <!-- The welcome screen, where a browser signs in with the user name and password of an account on the
+         computer (sign-in.js). cats.js draws the cat on the card; the help below it is for a first visit. -->
+    <section id="welcome" class="welcome" aria-labelledby="pair-heading" hidden>
+      <header class="welcome-bar">
+        <span class="brand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <span class="wordmark">yes machine</span>
+        </span>
+        <span class="pill live">Local network</span>
+      </header>
+      <div class="welcome-body">
+        <div class="pair-card">
+          <canvas id="welcome-cat" class="welcome-cat" aria-hidden="true"></canvas>
+          <h1 id="pair-heading">Connect to a computer</h1>
+          <p id="sign-in-help" class="sub">
+            Sign in with the user name and password you use on the computer you want to open.
+          </p>
+          <form id="pair-form" novalidate>
+            <label class="field-label" for="sign-in-user">User name</label>
+            <input
+              id="sign-in-user"
+              name="username"
+              maxlength="64"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-describedby="sign-in-help"
+            />
+            <label class="field-label" for="sign-in-password">Password</label>
+            <div class="password-field">
+              <input
+                id="sign-in-password"
+                name="password"
+                type="password"
+                maxlength="1024"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="reveal"
+                id="sign-in-reveal"
+                data-reveal="sign-in-password"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <span class="icon" data-icon="eye"></span>
+              </button>
+            </div>
+            <button id="connect-button" class="primary" type="submit">
+              <span class="icon" data-icon="play"></span>
+              <span id="connect-label">Connect</span>
+            </button>
+          </form>
+          <p class="hint">Connect only to a computer you trust.</p>
+        </div>
+        <details class="setup-help">
+          <summary>First time here? How it works</summary>
+          <ol>
+            <li>Open Yes Machine on the computer and allow screen and input access.</li>
+            <li>Connect both devices to the same local network, over Wi-Fi or Ethernet.</li>
+            <li>
+              Open the computer’s HTTPS address on this device, then sign in with that computer’s
+              user name and password.
+            </li>
+          </ol>
+          <p class="hint">
+            Your browser may ask you to trust a local certificate first. Open its certificate
+            details and compare the SHA-256 fingerprint with the one shown in Yes Machine on the
+            computer. Continue only if they match exactly.
+          </p>
+        </details>
+      </div>
+    </section>
+
+    <!-- The session: the tool bar, the computer's screen in a pixel monitor with the tool drawer beside it, the
+         status strip, and a small bar that stays while the bars are hidden or in full screen. sessionStatus in
+         common.js sets its data-state: pending, connected or offline. -->
+    <section
+      id="session"
+      class="session"
+      aria-label="Remote desktop session"
+      data-state="pending"
+      hidden
+    >
+      <!-- The tool bar: the computer's name, which session.js fills in, and the connection's state; then the
+           session's buttons. -->
+      <header class="vbar">
+        <div class="vbrand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <div class="vtitle">
+            <h1 id="host-name">Connecting</h1>
+            <p class="vstatus">
+              <i aria-hidden="true"></i>
+              <span id="connection-detail">Waiting for the remote desktop…</span>
+            </p>
+          </div>
+        </div>
+        <nav class="vtools" aria-label="Session controls">
+          <!-- Keyboard, Clipboard and Files open their panel in the tool drawer, and close it again
+               (layout.js). -->
+          <button
+            id="keyboard-button"
+            class="tool"
+            type="button"
+            data-panel="keyboard"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Keyboard"
+            title="Keyboard"
+          >
+            <span class="icon" data-icon="keyboard"></span>
+            <span class="label">Keyboard</span>
+          </button>
+          <button
+            class="tool"
+            type="button"
+            data-panel="clipboard"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Clipboard"
+            title="Clipboard"
+          >
+            <span class="icon" data-icon="clipboard"></span>
+            <span class="label">Clipboard</span>
+          </button>
+          <button
+            class="tool"
+            type="button"
+            data-panel="files"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Files"
+            title="Files"
+          >
+            <span class="icon" data-icon="file"></span>
+            <span class="label">Files</span>
+          </button>
+          <!-- The Screen menu, shown only when the computer has two or more screens: a map of them as the
+               computer places them, and a list. Choosing one asks the computer to share it instead (screens.js). -->
+          <div id="screens-wrap" class="screens-wrap" hidden>
+            <button
+              id="screens-button"
+              class="tool"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="screens-menu"
+              title="Screen"
+            >
+              <span class="icon" data-icon="monitor"></span>
+              <span class="label">Screen</span>
+              <span id="screens-count" class="count"></span>
+            </button>
+            <div
+              id="screens-menu"
+              class="screens-menu"
+              role="menu"
+              aria-labelledby="screens-title"
+              hidden
+            >
+              <h2 id="screens-title" class="menu-title">Screens</h2>
+              <div id="screens-map" class="screens-map" aria-hidden="true"></div>
+              <div id="screens-rows" class="screens-rows"></div>
+            </div>
+          </div>
+          <span class="sep" aria-hidden="true"></span>
+          <!-- The sound, disabled while the computer sends none: browsers start the video muted, and this turns
+               the sound on and off (stream.js). Then Hide bars and Full screen (layout.js), and Disconnect
+               (session.js). -->
+          <button
+            id="audio-button"
+            class="tool"
+            type="button"
+            aria-pressed="false"
+            aria-label="No audio stream"
+            title="Audio"
+            disabled
+          >
+            <span class="icon" data-icon="speaker-off"></span>
+          </button>
+          <button
+            id="bars-button"
+            class="tool"
+            type="button"
+            aria-label="Hide bars"
+            title="Hide the bars, so the desktop fills the window"
+          >
+            <span class="icon" data-icon="chevron-up"></span>
+          </button>
+          <button
+            id="fullscreen-button"
+            class="tool"
+            type="button"
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <span class="icon" data-icon="fullscreen"></span>
+          </button>
+          <button
+            id="disconnect-button"
+            class="ghost"
+            type="button"
+            aria-label="Disconnect"
+            title="Disconnect"
+          >
+            <span class="icon" data-icon="disconnect"></span>
+            <span class="label">Disconnect</span>
+          </button>
+        </nav>
+      </header>
+
+      <div class="vbody">
+        <!-- The computer's screen in a pixel monitor, sized to the screen's shape by fitScreen in layout.js, with a
+             cat napping on top (cats.js). The video takes the mouse and touch (pointer.js) and, while it has the
+             focus, the keys (keyboard.js). -->
+        <div id="desktop-stage" class="vstage">
+          <div id="monitor" class="monitor">
+            <canvas id="napper" class="napper" aria-hidden="true"></canvas>
+            <div id="screen" class="screen">
+              <video
+                id="remote-video"
+                autoplay
+                playsinline
+                muted
+                tabindex="0"
+                aria-label="Remote desktop. Focus here to send keyboard input."
+              ></video>
+              <!-- Over the picture: a note while the computer switches screens (screens.js), and the waiting
+                   screen until the picture plays, and again if it stops; session.js and stream.js change its
+                   text. -->
+              <div id="screens-switching" class="screens-switching" role="status" hidden>
+                <span id="screens-switching-text"></span>
+              </div>
+              <div id="video-placeholder" class="wait">
+                <strong id="video-status">Connecting</strong>
+                <div class="dots" aria-hidden="true">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+                <p id="video-hint">Keep Yes Machine open on the other computer.</p>
+              </div>
+            </div>
+            <!-- The monitor's chin: the ym mark, and a light in the connection's color (the session's
+                 data-state). -->
+            <div class="chin" aria-hidden="true">
+              <span class="chin-logo">ym</span>
+              <span class="led"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- The tool drawer, beside the screen, or over it while the bars are hidden or in full screen. showPanel
+             in layout.js opens it on one of its three panels; leaving the Keyboard panel lets go of its held
+             keys. -->
+        <aside id="drawer" class="drawer" aria-label="Tools" hidden>
+          <div class="drawer-tabs" role="tablist" aria-label="Tools">
+            <button
+              id="tab-keyboard"
+              type="button"
+              role="tab"
+              data-tab="keyboard"
+              aria-controls="panel-keyboard"
+              aria-selected="false"
+            >
+              Keyboard
+            </button>
+            <button
+              id="tab-clipboard"
+              type="button"
+              role="tab"
+              data-tab="clipboard"
+              aria-controls="panel-clipboard"
+              aria-selected="false"
+            >
+              Clipboard
+            </button>
+            <button
+              id="tab-files"
+              type="button"
+              role="tab"
+              data-tab="files"
+              aria-controls="panel-files"
+              aria-selected="false"
+            >
+              Files
+            </button>
+            <button
+              id="drawer-close"
+              class="icon-button"
+              type="button"
+              aria-label="Close tools"
+              title="Close tools"
+            >
+              <span class="icon" data-icon="close"></span>
+            </button>
+          </div>
+
+          <!-- Keyboard (keyboard.js): text to type in one go, single keys, keys to hold, and shortcuts, sent with
+               Cmd to a Mac and with Ctrl to the others. session.js puts the computer's name in the host-label
+               spans and names the Cmd / Win key for its system. -->
+          <section
+            id="panel-keyboard"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-keyboard"
+            data-tab="keyboard"
+            hidden
+          >
+            <h2>
+              Type on
+              <span class="host-label">the computer</span>
+            </h2>
+            <p class="sub">For a tablet, or for text you want to send in one go.</p>
+            <div class="type-row">
+              <label class="sr-only" for="remote-text">Text to type</label>
+              <input
+                id="remote-text"
+                type="text"
+                maxlength="10000"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                placeholder="Type text here…"
+              />
+              <button id="send-text-button" class="primary compact" type="button">Send</button>
+            </div>
+            <span class="field-label">Keys</span>
+            <div class="keys" aria-label="Keys">
+              <button class="key" type="button" data-key="Escape" data-code="Escape">Esc</button>
+              <button class="key" type="button" data-key="Tab" data-code="Tab">Tab</button>
+              <button class="key" type="button" data-key="Enter" data-code="Enter">Enter</button>
+              <button
+                class="key"
+                type="button"
+                data-key="Backspace"
+                data-code="Backspace"
+                aria-label="Backspace"
+              >
+                ⌫
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowLeft"
+                data-code="ArrowLeft"
+                aria-label="Left arrow"
+              >
+                ←
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowUp"
+                data-code="ArrowUp"
+                aria-label="Up arrow"
+              >
+                ↑
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowDown"
+                data-code="ArrowDown"
+                aria-label="Down arrow"
+              >
+                ↓
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowRight"
+                data-code="ArrowRight"
+                aria-label="Right arrow"
+              >
+                →
+              </button>
+            </div>
+            <span class="field-label">Hold</span>
+            <div class="keys" aria-label="Keys to hold">
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Control"
+                data-code="ControlLeft"
+                aria-pressed="false"
+              >
+                Ctrl
+              </button>
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Alt"
+                data-code="AltLeft"
+                aria-pressed="false"
+              >
+                Alt
+              </button>
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Shift"
+                data-code="ShiftLeft"
+                aria-pressed="false"
+              >
+                Shift
+              </button>
+              <button
+                id="meta-key"
+                class="key modifier"
+                type="button"
+                data-key="Meta"
+                data-code="MetaLeft"
+                aria-pressed="false"
+              >
+                Cmd / Win
+              </button>
+            </div>
+            <span class="field-label">Shortcuts</span>
+            <div class="keys" aria-label="Shortcuts">
+              <button class="key" type="button" data-shortcut="c">Copy</button>
+              <button class="key" type="button" data-shortcut="v">Paste</button>
+              <button class="key" type="button" data-shortcut="x">Cut</button>
+              <button class="key" type="button" data-shortcut="a">Select all</button>
+              <button class="key" type="button" data-shortcut="z">Undo</button>
+            </div>
+          </section>
+
+          <!-- Clipboard (clipboard.js): how the computer shares its clipboard, and text to move by hand. -->
+          <section
+            id="panel-clipboard"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-clipboard"
+            data-tab="clipboard"
+            hidden
+          >
+            <h2>Clipboard</h2>
+            <p id="clipboard-mode" class="sub clipboard-mode off">
+              Move text between this device and the computer.
+            </p>
+            <span class="field-label">By hand</span>
+            <label class="sr-only" for="clipboard-text">Clipboard text</label>
+            <textarea
+              id="clipboard-text"
+              rows="6"
+              maxlength="1048576"
+              placeholder="Paste something to send…"
+            ></textarea>
+            <div class="pair">
+              <button id="clipboard-send" class="ghost" type="button">
+                <span>
+                  Send to
+                  <span class="host-label">the computer</span>
+                </span>
+              </button>
+              <button id="clipboard-get" class="ghost" type="button">
+                <span>
+                  Get from
+                  <span class="host-label">the computer</span>
+                </span>
+              </button>
+            </div>
+            <div class="links">
+              <button id="clipboard-paste" class="link-button" type="button">
+                Paste from this device
+              </button>
+              <button id="clipboard-copy" class="link-button" type="button">Copy text here</button>
+            </div>
+          </section>
+
+          <!-- Files (files.js): a file to send, chosen here or dropped here or on the screen, its progress, and
+               the files the computer offers, each with Save. -->
+          <section
+            id="panel-files"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-files"
+            data-tab="files"
+            hidden
+          >
+            <h2>Files</h2>
+            <!-- prettier-ignore -->
+            <p class="sub">Send files to <span class="host-label">the computer</span>. Files it sends you appear below.</p>
+            <label id="file-drop" class="drop" for="file-input">
+              <span class="icon" data-icon="file"></span>
+              <strong>Drop a file here or choose one</strong>
+              <span>Up to 10 GB per file</span>
+              <input id="file-input" class="sr-only" type="file" />
+            </label>
+            <p id="file-status" class="hint" role="status">Ready when you are.</p>
+            <progress
+              id="file-progress"
+              max="100"
+              value="0"
+              aria-label="File transfer progress"
+              hidden
+            ></progress>
+            <div id="downloads" class="downloads" aria-label="Files received"></div>
+          </section>
+        </aside>
+      </div>
+
+      <!-- The status strip: whether input reaches the computer, a tip, and the sound's state (stream.js). -->
+      <footer class="vstrip">
+        <span id="input-status" class="input-status" data-state="pending">Input pending</span>
+        <!-- prettier-ignore -->
+        <span class="tip">Click the desktop to control it. On a touch screen, two fingers scroll.</span>
+        <span id="audio-status">No audio</span>
+      </footer>
+
+      <!-- The small bar at the top while the bars are hidden or in full screen, with Keyboard, Show bars and Full
+           screen; it fades after 3 seconds (layout.js). -->
+      <div id="fs-bar" class="fs-bar">
+        <button
+          class="tool"
+          type="button"
+          data-panel="keyboard"
+          aria-pressed="false"
+          aria-controls="drawer"
+        >
+          <span class="icon" data-icon="keyboard"></span>
+          <span class="label">Keyboard</span>
+        </button>
+        <button id="bars-show" class="tool" type="button" title="Show the bars again">
+          <span class="icon" data-icon="chevron-down"></span>
+          <span class="label">Show bars</span>
+        </button>
+        <button id="fullscreen-exit" class="tool" type="button" aria-pressed="false">
+          <span class="icon" data-icon="fullscreen"></span>
+          <span class="label">Full screen</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Notices at the bottom of the page (showNotice in common.js). They go after 7 seconds, except sticky ones,
+         which stay until dismissed or replaced. -->
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden>
+      <span id="notice-text"></span>
+      <button id="notice-dismiss" class="notice-dismiss" aria-label="Dismiss message" type="button">
+        <span class="icon" data-icon="close"></span>
+      </button>
+    </div>
+  </body>
+</html>

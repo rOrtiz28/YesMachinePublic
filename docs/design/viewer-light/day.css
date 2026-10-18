@@ -1,0 +1,116 @@
+/* Proposal: the viewers by day. The same tokens as host.css's light mode, plus the few colors style.css and
+   android-viewer.css fix by hand. In the app this becomes @media (prefers-color-scheme: light), which the desktop
+   app sets from its sun and moon switch; here html.day stands in for it. html.dark-frames keeps the monitor and the
+   device frame black by day, to compare. */
+html.day {
+  color-scheme: light;
+  --bg: #eef2f5;
+  --panel: #ffffff;
+  --field: #f6f8fa;
+  --raised: #f0f4f7;
+  --line: #dbe2e8;
+  --line-strong: #c4ced7;
+  --text: #1d2730;
+  --muted: #5b6a76;
+  --faint: #8a97a3;
+  --art: #46545f;
+  --mint: #23924c;
+  --mint-hover: #1d7f41;
+  --mint-ink: #ffffff;
+  --mint-tint: #e8f8ee;
+  --mint-line: #9ad5ad;
+  --warn: #9a6a12;
+  --warn-line: #e4c784;
+  --danger: #c0392b;
+  --danger-line: #efb3ab;
+}
+html.day .logo {
+  background: #8feba7;
+  color: #0f2416;
+}
+html.day ::selection {
+  background: #bfe6cb;
+  color: #1d2730;
+}
+html.day * {
+  -webkit-tap-highlight-color: rgba(35, 146, 76, 0.14);
+}
+
+/* The monitor by day: a white frame with a gray outline, like the house's day windows, and a light screen while
+   it waits for the desktop. */
+html.day .monitor {
+  background: #fbfcfd;
+  box-shadow:
+    0 0 0 2px #9aa6b1,
+    inset 0 0 0 2px #ffffff,
+    0 18px 40px #1d273024;
+}
+html.day .screen {
+  background: #e3e9ee;
+  box-shadow: 0 0 0 2px #9aa6b1;
+}
+html.day .wait {
+  background: radial-gradient(#ffffff, #e3e9ee 70%);
+}
+html.day .led {
+  box-shadow: 0 0 8px #9a6a1266;
+}
+html.day .session[data-state='connected'] .led {
+  box-shadow: 0 0 8px #23924c66;
+}
+html.day .session[data-state='offline'] .led {
+  box-shadow: 0 0 8px #c0392b66;
+}
+
+html.day .drop {
+  border-color: #b9c4ce;
+}
+html.day .screens-menu {
+  box-shadow: 0 18px 40px #1d273026;
+}
+html.day .fs-bar {
+  background: #ffffffe8;
+  box-shadow: 0 10px 30px #1d273033;
+}
+html.day .notice {
+  background: var(--panel);
+  box-shadow: 0 12px 32px #1d273033;
+}
+
+/* The Android window by day: a light stage, and the device in the same white frame. */
+html.day .android .device-stage {
+  background: radial-gradient(#ffffff, #e3e9ee 75%);
+}
+html.day .android .device-screen {
+  border-color: #fbfcfd;
+  box-shadow:
+    0 0 0 2px #9aa6b1,
+    0 18px 40px #1d273030;
+}
+html.day .android .device-stage:has(.typing:focus) .device-screen {
+  box-shadow:
+    0 0 0 2px var(--mint),
+    0 18px 40px #1d273030;
+}
+
+/* To compare: black frames by day. */
+html.day.dark-frames .monitor {
+  background: #1a2228;
+  box-shadow:
+    0 0 0 2px #0a0f12,
+    inset 0 0 0 2px #2b353c,
+    0 18px 40px #1d273040;
+}
+html.day.dark-frames .screen {
+  background: #05080a;
+  box-shadow: 0 0 0 2px #0a0f12;
+}
+html.day.dark-frames .chin-logo {
+  color: #5d6973;
+}
+html.day.dark-frames .android .device-screen {
+  border-color: #1a2229;
+  box-shadow:
+    0 0 0 1px #0a0f12,
+    0 18px 40px #1d273040;
+}

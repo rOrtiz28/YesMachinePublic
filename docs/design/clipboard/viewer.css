@@ -1,0 +1,17 @@
+/* Proposal for style.css: the Clipboard panel's first line says how the computer shares its clipboard. */
+.clipboard-mode {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.clipboard-mode::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--mint);
+  translate: 0 -1px;
+}
+.clipboard-mode.off::before {
+  background: var(--faint);
+}

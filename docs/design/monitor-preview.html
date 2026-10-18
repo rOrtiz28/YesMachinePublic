@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Choose the Screen</title>
+    <link rel="stylesheet" href="../../src/windows/host/host.css" />
+    <script src="../../public/pixel-icons.js" defer></script>
+    <style>
+      /* Prototype only: a viewer window's tool bar with a Screen menu, and the computer's card with a Share screen
+     choice, for a computer with two screens. Colors and type come from the app's host.css tokens; the tool bar
+     copies the viewer page's own rules. */
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding-inline: max(16px, 3vw);
+        padding-block: 32px 64px;
+        display: grid;
+        gap: 22px;
+      }
+      .intro h1 {
+        font-size: clamp(30px, 4vw, 44px);
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 72ch;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 16px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--raised);
+        font-size: 13px;
+      }
+      .controls button[aria-pressed='true'] {
+        background: var(--mint);
+        border-color: var(--mint);
+        color: var(--mint-ink);
+      }
+      h2.section {
+        margin: 18px 0 0;
+        font-size: 22px;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 78ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--muted);
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+      }
+      .notes b {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* The viewer window, as the viewer page draws it. */
+      .frame {
+        overflow-x: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 14px;
+      }
+      .viewer {
+        position: relative;
+        display: grid;
+        grid-template-rows: 60px 460px;
+        min-width: 980px;
+        background: var(--bg);
+      }
+      .vbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 0 14px 0 16px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .vbrand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .logo {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: var(--mint);
+        color: var(--mint-ink);
+        font: 700 15px/1 var(--display);
+      }
+      .vtitle h3 {
+        margin: 0;
+        font: 600 15px/1.2 var(--display);
+      }
+      .vstatus {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .vstatus i {
+        width: 7px;
+        height: 7px;
+        background: var(--mint);
+      }
+      .vtools {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .tool {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 11px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: none;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .tool:hover {
+        color: var(--text);
+        background: var(--raised);
+      }
+      .tool[aria-expanded='true'] {
+        color: var(--mint);
+        background: var(--mint-tint);
+        border-color: var(--mint-line);
+      }
+      .tool .count {
+        padding: 1px 6px;
+        border-radius: 5px;
+        background: var(--raised);
+        color: var(--text);
+        font-size: 11px;
+      }
+      .tool[aria-expanded='true'] .count {
+        background: var(--mint-line);
+        color: var(--mint);
+      }
+      .sep {
+        width: 1px;
+        height: 22px;
+        margin: 0 6px;
+        background: var(--line-strong);
+      }
+      .disconnect {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 4px;
+        padding: 8px 12px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: none;
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      /* The remote desktop, standing in for the picture of whichever screen is shared. */
+      .desk {
+        position: relative;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: #0a0e11;
+      }
+      .shot {
+        display: grid;
+        place-items: center;
+        gap: 8px;
+        width: 78%;
+        aspect-ratio: 16 / 10;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        text-align: center;
+        transition: opacity 0.25s;
+      }
+      .shot b {
+        font: 700 72px/1 var(--display);
+        color: var(--art);
+      }
+      .shot span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .viewer[data-screen='1'] .shot {
+        background: linear-gradient(160deg, #1b2a35, #121a20);
+      }
+      .viewer[data-screen='2'] .shot {
+        aspect-ratio: 16 / 9;
+        width: 82%;
+        background: linear-gradient(160deg, #2a2236, #15121c);
+      }
+      .switching {
+        position: absolute;
+        inset: auto 0 18px;
+        display: none;
+        justify-content: center;
+      }
+      .switching span {
+        padding: 8px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .viewer[data-switching] .switching {
+        display: flex;
+      }
+      .viewer[data-switching] .shot {
+        opacity: 0.35;
+      }
+
+      /* The Screen menu: where the screens sit, as the computer arranges them, and one row each. */
+      .menu {
+        position: absolute;
+        top: 56px;
+        right: 262px;
+        z-index: 2;
+        display: none;
+        width: 340px;
+        padding: 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: var(--panel);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      }
+      .viewer[data-menu] .menu {
+        display: grid;
+        gap: 12px;
+      }
+      .menu h4 {
+        margin: 0;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .map {
+        position: relative;
+        height: 92px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--field);
+      }
+      .map button {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        border: 2px solid var(--line-strong);
+        border-radius: 4px;
+        background: var(--raised);
+        color: var(--muted);
+        font: 700 16px/1 var(--display);
+      }
+      .map button[aria-current='true'] {
+        border-color: var(--mint);
+        background: var(--mint-tint);
+        color: var(--mint);
+      }
+      .map .one {
+        left: 62px;
+        top: 30px;
+        width: 76px;
+        height: 48px;
+      }
+      .map .two {
+        left: 142px;
+        top: 12px;
+        width: 120px;
+        height: 68px;
+      }
+      .rows {
+        display: grid;
+        gap: 4px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: none;
+        text-align: left;
+        color: var(--text);
+        font-size: 13px;
+      }
+      .row:hover {
+        background: var(--raised);
+      }
+      .row[aria-checked='true'] {
+        border-color: var(--mint-line);
+        background: var(--mint-tint);
+      }
+      .row .n {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 5px;
+        background: var(--raised);
+        font: 700 13px/1 var(--display);
+        color: var(--muted);
+      }
+      .row[aria-checked='true'] .n {
+        background: var(--mint);
+        color: var(--mint-ink);
+      }
+      .row small {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .row .tag {
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      /* The computer's card, with the real card classes. */
+      .host-wrap {
+        max-width: 520px;
+      }
+      .host-wrap .card {
+        display: grid;
+        gap: 14px;
+      }
+      .host-wrap .hint {
+        margin: -4px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Choose the Screen</h1>
+        <p>
+          A computer with two screens, osiris-mac, seen from another computer. The viewer gets a
+          <b>Screen</b>
+          menu in its tool bar, and the computer’s own card gets a
+          <b>Share screen</b>
+          choice. Click through the states.
+        </p>
+        <div class="controls" role="group" aria-label="States">
+          <button type="button" data-state="closed" aria-pressed="true">Screen 1 shown</button>
+          <button type="button" data-state="open" aria-pressed="false">Screen menu open</button>
+          <button type="button" data-state="switching" aria-pressed="false">Switching</button>
+          <button type="button" data-state="two" aria-pressed="false">Screen 2 shown</button>
+        </div>
+      </header>
+
+      <div class="frame">
+        <div class="viewer" id="viewer" data-screen="1">
+          <header class="vbar">
+            <div class="vbrand">
+              <span class="logo" aria-hidden="true">ym</span>
+              <div class="vtitle">
+                <h3>osiris-mac</h3>
+                <p class="vstatus">
+                  <i aria-hidden="true"></i>
+                  <span>Connected directly over your local network</span>
+                </p>
+              </div>
+            </div>
+            <nav class="vtools" aria-label="Session controls">
+              <button class="tool" type="button">
+                <span class="icon" data-icon="keyboard"></span>
+                <span>Keyboard</span>
+              </button>
+              <button class="tool" type="button">
+                <span class="icon" data-icon="clipboard"></span>
+                <span>Clipboard</span>
+              </button>
+              <button class="tool" type="button">
+                <span class="icon" data-icon="file"></span>
+                <span>Files</span>
+              </button>
+              <button
+                class="tool"
+                id="screen-tool"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+              >
+                <span class="icon" data-icon="monitor"></span>
+                <span>Screen</span>
+                <span class="count" id="screen-count">1 of 2</span>
+              </button>
+              <span class="sep" aria-hidden="true"></span>
+              <button class="tool" type="button" aria-label="Audio">
+                <span class="icon" data-icon="speaker-on"></span>
+              </button>
+              <button class="tool" type="button" aria-label="Full screen">
+                <span class="icon" data-icon="fullscreen"></span>
+              </button>
+              <button class="disconnect" type="button">
+                <span class="icon" data-icon="disconnect"></span>
+                <span>Disconnect</span>
+              </button>
+            </nav>
+          </header>
+          <div class="desk">
+            <div class="shot">
+              <b id="shot-number">1</b>
+              <span id="shot-name">Built-in Retina Display</span>
+            </div>
+            <div class="switching"><span>Switching to LG UltraFine…</span></div>
+          </div>
+          <div class="menu" role="menu" aria-label="Screens on osiris-mac">
+            <h4>Screens on osiris-mac</h4>
+            <div class="map" aria-hidden="true">
+              <button class="one" type="button" tabindex="-1">1</button>
+              <button class="two" type="button" tabindex="-1">2</button>
+            </div>
+            <div class="rows">
+              <button class="row" type="button" role="menuitemradio" data-screen="1">
+                <span class="n">1</span>
+                <span>
+                  Built-in Retina Display
+                  <small>1512 × 982</small>
+                </span>
+                <span class="tag">Main</span>
+              </button>
+              <button class="row" type="button" role="menuitemradio" data-screen="2">
+                <span class="n">2</span>
+                <span>
+                  LG UltraFine
+                  <small>2560 × 1440</small>
+                </span>
+                <span class="tag"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section">On the computer itself</h2>
+      <div class="host-wrap">
+        <section class="card host-card" aria-label="This computer">
+          <div class="card-head">
+            <span class="card-icon icon" data-icon="laptop"></span>
+            <div>
+              <h2>This computer</h2>
+              <p class="sub">osiris-mac</p>
+            </div>
+            <span class="pill live">Sharing is on</span>
+          </div>
+          <label class="field-label" for="preview-network">Share on network</label>
+          <div class="select">
+            <select id="preview-network">
+              <option>192.168.1.52 · Wi-Fi</option>
+            </select>
+            <span class="icon" data-icon="chevron-down"></span>
+          </div>
+          <label class="field-label" for="preview-screen">Share screen</label>
+          <div class="select">
+            <select id="preview-screen">
+              <option value="1">1 · Built-in Retina Display (main)</option>
+              <option value="2">2 · LG UltraFine</option>
+            </select>
+            <span class="icon" data-icon="chevron-down"></span>
+          </div>
+          <p class="hint">The other device can switch screens from its tool bar too.</p>
+        </section>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>Only with two or more screens.</b>
+          On a computer with one screen nothing changes: no Screen button, no Share screen choice.
+        </li>
+        <li>
+          <b>Switching takes about a second.</b>
+          The picture changes to that screen, and the mouse, the keyboard and the viewer’s own
+          pointer on Windows follow it.
+        </li>
+        <li>
+          <b>One choice, remembered on the computer.</b>
+          Whether you switch from the viewer or from the card, the computer remembers it, so the
+          next connection starts on the same screen.
+        </li>
+        <li>
+          <b>The map shows where each screen sits</b>
+          , as the computer arranges them, and its numbers match the rows. Clicking a box in the map
+          switches too.
+        </li>
+        <li>
+          <b>Linux with Wayland:</b>
+          GNOME’s own dialog picks the screen each time sharing starts, so there the menu isn’t
+          offered. All screens at once isn’t part of this.
+        </li>
+      </ul>
+    </main>
+    <script>
+      // Prototype states.
+      const viewer = document.getElementById('viewer');
+      const show = (screen) => {
+        viewer.dataset.screen = screen;
+        document.getElementById('shot-number').textContent = screen;
+        document.getElementById('shot-name').textContent =
+          screen === '1' ? 'Built-in Retina Display' : 'LG UltraFine';
+        document.getElementById('screen-count').textContent = `${screen} of 2`;
+        document
+          .querySelectorAll('.row')
+          .forEach((row) =>
+            row.setAttribute('aria-checked', String(row.dataset.screen === screen)),
+          );
+        document.querySelector('.map .one').setAttribute('aria-current', String(screen === '1'));
+        document.querySelector('.map .two').setAttribute('aria-current', String(screen === '2'));
+        document.getElementById('preview-screen').value = screen;
+      };
+      const setState = (state) => {
+        document
+          .querySelectorAll('.controls button')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === state)));
+        const open = state === 'open';
+        if (open) viewer.dataset.menu = '';
+        else delete viewer.dataset.menu;
+        if (state === 'switching') viewer.dataset.switching = '';
+        else delete viewer.dataset.switching;
+        document.getElementById('screen-tool').setAttribute('aria-expanded', String(open));
+        show(state === 'two' ? '2' : '1');
+      };
+      document
+        .querySelectorAll('.controls button')
+        .forEach((b) => b.addEventListener('click', () => setState(b.dataset.state)));
+      document
+        .getElementById('screen-tool')
+        .addEventListener('click', () =>
+          setState(viewer.dataset.menu === undefined ? 'open' : 'closed'),
+        );
+      document.querySelectorAll('.row, .map button').forEach((b) =>
+        b.addEventListener('click', () => {
+          const screen = b.dataset.screen || (b.classList.contains('one') ? '1' : '2');
+          setState('switching');
+          setTimeout(() => setState(screen === '2' ? 'two' : 'closed'), 900);
+        }),
+      );
+      document
+        .getElementById('preview-screen')
+        .addEventListener('change', (e) => setState(e.target.value === '2' ? 'two' : 'closed'));
+      addEventListener('DOMContentLoaded', () => {
+        PixelIcons.render();
+        setState('closed');
+      });
+    </script>
+  </body>
+</html>

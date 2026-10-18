@@ -1,0 +1,280 @@
+/* Android adjustments on top of the desktop app's host.css: touch targets, no hover-only controls, and a
+   narrower frame on phones. Computers on another network are dimmed. */
+.titlebar {
+  -webkit-app-region: no-drag;
+}
+.device-main {
+  padding-bottom: 30px;
+}
+.device-action {
+  opacity: 1;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+.device.away .device-main {
+  opacity: 0.62;
+}
+.device.away .status {
+  background: var(--warn);
+}
+.house .device-main {
+  min-height: 84px;
+}
+dialog {
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+@media (max-width: 700px) {
+  :root {
+    --sidebar: 64px;
+    --gutter: 16px;
+    --titlebar: 56px;
+  }
+  .titlebar {
+    padding: 0 16px;
+  }
+  .nav-item {
+    width: 48px;
+    height: 48px;
+  }
+  h1 {
+    font-size: 34px;
+  }
+  .house-facade {
+    padding: 30px 22px 78px;
+  }
+  .house .devices {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 30px 18px;
+  }
+  /* The heading sits at the top of a taller sky, so the cat and the chimney on the roof don't cover it. */
+  .house-sky {
+    height: 170px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+  .setting {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+}
+
+/* General mode: the This tablet card on the home screen, the mode in Settings with instructions that open below it,
+   and the dialogs for advanced mode and for allowing a computer. */
+.tablet-card {
+  margin: 0 0 26px;
+}
+.tablet-card .hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.tablet-card .hint b {
+  color: var(--text);
+  font-weight: 500;
+}
+.tablet-card .permission {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--warn);
+  font-size: 12px;
+}
+.tablet-card .permission .ghost {
+  padding: 7px 12px;
+  font-size: 12px;
+  border-color: var(--warn-line);
+  color: var(--warn);
+}
+.tablet-card .actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tablet-card .actions .ghost {
+  flex: 1;
+  justify-content: center;
+}
+.tablet-card .see-instructions {
+  align-self: flex-end;
+  text-decoration: none;
+}
+.tablet-card details summary {
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.control-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.control-head .guide-tabs {
+  flex: none;
+  flex-wrap: nowrap;
+}
+.control-head .guide-tabs button[aria-checked='true'] {
+  color: var(--mint);
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.mode-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.mode-more {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+.mode-more > .ghost {
+  justify-self: start;
+}
+.mode-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: 12px;
+}
+.mode-state i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--warn);
+}
+.mode-state span {
+  flex: 1;
+}
+.mode-state.ok {
+  border-color: var(--mint-line);
+}
+.mode-state.ok i {
+  background: var(--mint);
+}
+.mode-toggle {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mint);
+  font-size: 12px;
+}
+.mode-toggle .icon svg {
+  width: 12px;
+  height: 12px;
+}
+.advanced-dialog,
+.allow-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+.advanced-dialog p,
+.allow-dialog p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.allow-dialog .who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--field);
+}
+.allow-dialog .who .icon svg {
+  width: 28px;
+  height: 28px;
+}
+.allow-dialog .who strong {
+  display: block;
+  font-weight: 500;
+}
+.allow-dialog .who small {
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (max-width: 700px) {
+  .control-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+/* On a phone the card's pill goes under the name, and the share button keeps to one line. */
+@media (max-width: 520px) {
+  .tablet-card {
+    padding: 18px;
+  }
+  .tablet-card .card-head {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .tablet-card .card-head > .pill {
+    margin-left: 52px;
+  }
+  .tablet-card .primary {
+    gap: 12px;
+    padding-inline: 16px;
+  }
+}
+
+/* Touch feedback in the app's mint instead of Android's default blue, and no text selection on a long press. */
+* {
+  -webkit-tap-highlight-color: rgba(143, 235, 167, 0.18);
+}
+/* The house and the cat scene listen for taps on the cat. Her heart is the feedback, not a box over the whole area. */
+.house,
+.cat-scene,
+.cat-scene canvas {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+label,
+.nav-item {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+::selection {
+  background: #2c4a37;
+  color: #e6ede8;
+}
+
+/* Light mode: host.css has the day colors; here Android's touch feedback and selection take the day greens. The
+   house gets the desktop's taller bottom, for the day house's fence, sidewalk and road, by night too, so nothing
+   moves when the mode changes. */
+.house-facade {
+  padding-bottom: 150px;
+}
+.house-street {
+  height: 132px;
+}
+:root[data-theme='light'] * {
+  -webkit-tap-highlight-color: rgba(35, 146, 76, 0.14);
+}
+:root[data-theme='light'] :is(.house, .cat-scene, .cat-scene canvas) {
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-theme='light'] ::selection {
+  background: #bfe6cb;
+  color: #1d2730;
+}

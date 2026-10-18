@@ -1,0 +1,1362 @@
+/* The viewer: the page that shows another computer's desktop and controls it (public/client.html, run by the scripts
+   in public/client/). A computer that shares serves it to browsers on the network (src/main/sharing/server.cjs), and
+   the desktop app's viewer windows load it from the computer they show. The Android app bundles it for its own
+   viewer, and the desktop app's window for an Android device (src/windows/android/viewer.html) loads it with
+   viewer.css on top.
+
+   The page has two screens. The welcome screen is a centered card where a browser signs in with the computer's
+   account. The session screen is a tool bar on top, the remote desktop inside a pixel monitor with the cat napping on
+   its top edge, an optional tool drawer on the right, and a one-line status strip. With the bars hidden, or in full
+   screen, only the desktop remains, with a small bar at the top.
+
+   The color names and values match the main window's (src/windows/host/host.css), night and day, and
+   test/pages/viewer-theme.test.cjs checks that they do. Light mode follows prefers-color-scheme: the desktop app sets
+   it for its windows from its sun and moon switch, the Android app does the same for its viewer, and a browser takes
+   it from its device. */
+
+/* --- Fonts -------------------------------------------------------------------------------------------------------- */
+
+/* Pixelify Sans for the logo and headings, JetBrains Mono for everything else, served at /fonts/ by the computer and
+   by the Android app. The desktop app's Android window opens this file from the app's own files, where that path
+   leads nowhere, so its viewer.css declares the same fonts again. */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url(/fonts/pixelify-sans-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(/fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+
+/* --- Colors and sizes --------------------------------------------------------------------------------------------- */
+
+/* Night colors, the default, with the same names as in host.css: surfaces (--bg, --panel, --field, --raised), borders
+   (--line, --line-strong), three strengths of text (--text, --muted, --faint), --art for the large icons, the brand's
+   mint with its hover, ink, tint and line, and --warn and --danger with their lines. --px is the size of one pixel of
+   the cat art, so the cats and the room kept for them scale together; it is 2px on small screens. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1115;
+  --panel: #12191e;
+  --field: #0f151a;
+  --raised: #151d23;
+  --line: #1f2a31;
+  --line-strong: #2b3741;
+  --text: #e6ede8;
+  --muted: #8b98a3;
+  --faint: #5d6973;
+  --art: #c5ced3;
+  --mint: #8feba7;
+  --mint-hover: #a6f2bb;
+  --mint-ink: #0f2416;
+  --mint-tint: #132119;
+  --mint-line: #2c4a37;
+  --warn: #f4d094;
+  --warn-line: #5b4a2a;
+  --danger: #ff9e9e;
+  --danger-line: #5a2f36;
+  --display: 'Pixelify Sans', ui-monospace, monospace;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --px: 3px;
+}
+
+/* --- Base elements and shared pieces ------------------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 13px/1.5 var(--mono);
+}
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+/* Controls react to the first tap: manipulation turns off double-tap zoom, for which touch browsers would otherwise
+   wait. */
+button,
+a,
+input,
+textarea,
+summary,
+label {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+/* hidden always hides, even an element whose class sets its display. */
+[hidden] {
+  display: none !important;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+/* Visually hidden, for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Pixel icons: public/pixel-icons.js fills each [data-icon] element with an SVG drawn in currentColor. */
+.icon {
+  display: inline-grid;
+  flex: none;
+}
+.icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+.logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--mint);
+  color: var(--mint-ink);
+  font: 700 17px/1 var(--display);
+  letter-spacing: -0.5px;
+}
+.sub {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.field-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field-label span {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--faint);
+}
+/* The welcome bar's Local network pill. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pill::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--faint);
+}
+.pill.live {
+  color: var(--mint);
+  border-color: var(--mint-line);
+}
+.pill.live::before {
+  background: var(--mint);
+}
+
+/* --- Buttons and fields ------------------------------------------------------------------------------------------- */
+
+/* The main window's buttons, most of them a little smaller: the mint primary, the outlined ghost, square icon buttons
+   and links. */
+.primary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--mint);
+  color: var(--mint-ink);
+  font: 700 15px/1 var(--mono);
+  text-align: left;
+}
+.primary:hover:not(:disabled) {
+  background: var(--mint-hover);
+}
+.primary.compact {
+  width: auto;
+  padding: 11px 16px;
+  font-size: 13px;
+}
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ghost:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--muted);
+}
+.icon-button:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+.icon-button svg {
+  width: 12px;
+  height: 12px;
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mint);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+input,
+textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--field);
+  font-size: 13px;
+}
+input:focus,
+textarea:focus {
+  border-color: var(--mint-line);
+}
+/* The eye button inside the password field's right end shows or hides the password; the field's right padding keeps
+   the text from running under it. */
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-right: 48px;
+}
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.reveal:hover,
+.reveal:focus-visible {
+  color: var(--mint);
+  background: var(--mint-tint);
+}
+::placeholder {
+  color: var(--faint);
+}
+/* Thin scrollbars in the line color. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* --- Welcome screen ----------------------------------------------------------------------------------------------- */
+
+/* The sign-in card, with the cat sitting on its top edge, and the first-time help below it. The screen keeps clear of
+   a phone's notch and rounded corners, which the page reaches with viewport-fit=cover. Heights are given twice:
+   100vh for older browsers, then 100dvh, which follows the visible area as a phone browser's bars come and go. */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+.welcome-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wordmark {
+  font: 700 15px/1 var(--mono);
+  letter-spacing: -0.2px;
+}
+/* The top padding leaves room for the cat above the card. */
+.welcome-body {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  padding: 112px 16px 48px;
+}
+.pair-card {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--panel);
+}
+/* 32 by 32 cat pixels, standing on the card's top border near its right corner. pixelated keeps the enlarged pixels
+   square. */
+.welcome-cat {
+  position: absolute;
+  right: 32px;
+  bottom: calc(100% + 1px);
+  width: calc(32 * var(--px));
+  height: calc(32 * var(--px));
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.pair-card h1 {
+  font: 700 26px/1.1 var(--display);
+  overflow-wrap: anywhere;
+}
+.pair-card .sub {
+  margin-top: -8px;
+}
+/* Labels sit close over their fields, against the form's 14px gap. */
+#pair-form {
+  display: grid;
+  gap: 14px;
+}
+#pair-form .field-label {
+  margin-bottom: -6px;
+}
+#pair-form .primary {
+  margin-top: 6px;
+}
+.setup-help {
+  width: min(440px, 100%);
+}
+.setup-help summary {
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.setup-help ol {
+  margin: 12px 0;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* --- Session screen and its tool bar ------------------------------------------------------------------------------ */
+
+/* Three rows: the tool bar, the desktop with the drawer beside it, and the status strip. The bars keep clear of a
+   phone's notch and rounded corners. */
+.session {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+.vbar {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 56px;
+  padding: 6px max(14px, env(safe-area-inset-right)) 6px max(18px, env(safe-area-inset-left));
+  padding-top: max(6px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line);
+}
+.vbrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-right: auto;
+}
+.vtitle {
+  min-width: 0;
+}
+.vtitle h1 {
+  overflow: hidden;
+  font: 500 14px/1.3 var(--mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.vstatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.vstatus span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The connection's square: warn while connecting, mint when connected, danger when it is offline. The scripts set the
+   session's data-state. */
+.vstatus i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--warn);
+}
+.session[data-state='connected'] .vstatus i {
+  background: var(--mint);
+}
+.session[data-state='offline'] .vstatus i {
+  background: var(--danger);
+}
+.vtools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+/* The bar's buttons: quiet until hovered, mint while pressed, such as while their panel is open. */
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tool:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--raised);
+}
+.tool[aria-pressed='true'] {
+  color: var(--mint);
+  background: var(--mint-tint);
+  border-color: var(--mint-line);
+}
+.tool:disabled {
+  opacity: 0.35;
+}
+.sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--line-strong);
+}
+/* Disconnect, the last button on the right. */
+.vtools .ghost {
+  margin-left: 4px;
+  padding: 8px 12px;
+}
+
+/* --- Screen menu -------------------------------------------------------------------------------------------------- */
+
+/* The Screen menu, on a computer with two or more screens: a map of where they sit, and a row each with its number,
+   name, size and Main for the main screen. The button shows which one is on, such as 1 of 2. */
+.screens-wrap {
+  position: relative;
+}
+.tool .count {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 11px;
+}
+.tool[aria-expanded='true'] {
+  color: var(--mint);
+  background: var(--mint-tint);
+  border-color: var(--mint-line);
+}
+.tool[aria-expanded='true'] .count {
+  background: var(--mint-line);
+  color: var(--mint);
+}
+.screens-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 12px;
+  width: 340px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.screens-menu[hidden] {
+  display: none;
+}
+.menu-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* Its size, 92px tall and 310px wide inside the 340px menu, is the MAP_HEIGHT and MAP_WIDTH that client/screens.js
+   uses to place each screen on it. */
+.screens-map {
+  position: relative;
+  height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+.screens-map button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font: 700 15px/1 var(--display);
+}
+.screens-map button[aria-current='true'] {
+  border-color: var(--mint);
+  background: var(--mint-tint);
+  color: var(--mint);
+}
+.screens-rows {
+  display: grid;
+  gap: 4px;
+}
+.screens-rows button {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+}
+.screens-rows button:hover {
+  background: var(--raised);
+}
+.screens-rows button[aria-checked='true'] {
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.screens-rows .n {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--muted);
+  font: 700 13px/1 var(--display);
+}
+.screens-rows button[aria-checked='true'] .n {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.screens-rows .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.screens-rows small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.screens-rows .tag {
+  color: var(--faint);
+  font-size: 11px;
+}
+/* Switching to another screen: a note over the bottom of the desktop until the computer confirms. */
+.screens-switching {
+  position: absolute;
+  inset: auto 0 18px;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.screens-switching[hidden] {
+  display: none;
+}
+.screens-switching span {
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* --- The desktop in its pixel monitor ----------------------------------------------------------------------------- */
+
+.vbody {
+  grid-row: 2;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+/* The room around the monitor. The top padding leaves room for the cat lying on it (22 cat pixels above its edge),
+   and the sides for the cat's canvas, which reaches 14 cat pixels past the right edge. */
+.vstage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: calc(24 * var(--px)) calc(16 * var(--px)) 22px;
+}
+/* The monitor: a bezel drawn with shadows (a dark outline, a light inner edge and a drop shadow) around the screen,
+   and the chin below it. */
+.monitor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 0;
+  border-radius: 6px;
+  background: #1a2228;
+  box-shadow:
+    0 0 0 2px #0a0f12,
+    inset 0 0 0 2px #2b353c,
+    0 18px 40px #0007;
+}
+/* 640 by 400 until fitScreen() (client/layout.js) sizes it to the remote desktop's shape, as large as the stage
+   allows. */
+.screen {
+  position: relative;
+  width: 640px;
+  height: 400px;
+  overflow: hidden;
+  background: #05080a;
+  box-shadow: 0 0 0 2px #0a0f12;
+}
+/* The monitor's chin: the ym mark and an LED in the connection's color. */
+.chin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 28px;
+}
+.chin-logo {
+  font: 700 12px/1 var(--display);
+  color: var(--faint);
+}
+.led {
+  width: 6px;
+  height: 6px;
+  background: var(--warn);
+  box-shadow: 0 0 8px #f4d094aa;
+}
+.session[data-state='connected'] .led {
+  background: var(--mint);
+  box-shadow: 0 0 8px #8feba7aa;
+}
+.session[data-state='offline'] .led {
+  background: var(--danger);
+  box-shadow: 0 0 8px #ff9e9eaa;
+}
+/* The cat lies on the monitor's top edge (its feet are on art row 22), with its tail hanging past the right edge. */
+.napper {
+  position: absolute;
+  top: calc(-22 * var(--px));
+  right: calc(-14 * var(--px));
+  width: calc(48 * var(--px));
+  height: calc(48 * var(--px));
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+/* The remote desktop. client/pointer.js handles touches itself (drag to move, two fingers to scroll), so the browser
+   does nothing with them, and a long press neither selects nor opens a menu. */
+video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* The focus ring goes inside the video, since the screen clips anything outside it. */
+video:focus-visible {
+  outline-offset: -3px;
+}
+/* Over the video until the desktop arrives: what is happening, and four dots that light in turn. */
+.wait {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: radial-gradient(#13201a, #05080a 70%);
+  text-align: center;
+}
+.wait strong {
+  font: 700 22px/1.1 var(--display);
+  overflow-wrap: anywhere;
+}
+.wait p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.dots {
+  display: flex;
+  gap: 8px;
+}
+.dots i {
+  width: 6px;
+  height: 6px;
+  background: var(--mint);
+  opacity: 0.25;
+  animation: dot 1.2s steps(1) infinite;
+}
+.dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.dots i:nth-child(4) {
+  animation-delay: 0.6s;
+}
+@keyframes dot {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  31%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+/* --- Status strip ------------------------------------------------------------------------------------------------- */
+
+/* One line under the desktop: whether input reaches the computer, a tip, and the audio's state. */
+.vstrip {
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 30px;
+  padding: 4px max(18px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+.vstrip .tip {
+  margin-right: auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The input's square: warn while pending, mint when ready, faint when this device can only watch. */
+.input-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.input-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--warn);
+}
+.input-status[data-state='ready']::before {
+  background: var(--mint);
+}
+.input-status[data-state='view']::before {
+  background: var(--faint);
+}
+#audio-status {
+  flex: none;
+  margin-left: auto;
+}
+
+/* --- Tool drawer -------------------------------------------------------------------------------------------------- */
+
+/* Keyboard, Clipboard and Files, as tabs in a panel on the right of the desktop. */
+.drawer {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 320px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+.drawer-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-tabs [role='tab'] {
+  padding: 9px 10px 11px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+.drawer-tabs [role='tab']:hover {
+  color: var(--text);
+}
+.drawer-tabs [role='tab'][aria-selected='true'] {
+  color: var(--mint);
+  border-bottom-color: var(--mint);
+}
+.drawer-tabs .icon-button {
+  margin: 0 0 6px auto;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 18px;
+  overflow: auto;
+}
+.panel h2 {
+  font: 700 18px/1.2 var(--display);
+  overflow-wrap: anywhere;
+}
+.panel .sub {
+  margin-top: -8px;
+}
+.panel .field-label {
+  margin: 4px 0 -6px;
+}
+/* Keyboard: a line of text to type, then keys, held modifiers and shortcuts as keycaps. */
+.type-row {
+  display: flex;
+  gap: 8px;
+}
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* A keycap. Its thicker bottom edge presses down while it is clicked, and a held modifier stays mint. */
+.key {
+  min-width: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: var(--raised);
+  font-size: 12px;
+  text-align: center;
+}
+.key:hover {
+  border-color: var(--muted);
+}
+.key:active {
+  translate: 0 1px;
+  border-bottom-width: 2px;
+}
+.key[aria-pressed='true'] {
+  color: var(--mint-ink);
+  background: var(--mint);
+  border-color: var(--mint);
+}
+/* Clipboard: the text to send, or that came from the computer, and the buttons for each way. */
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.pair {
+  display: flex;
+  gap: 8px;
+}
+.pair .ghost {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+/* The Clipboard panel's first line says how the computer shares its clipboard; the dot dims while it doesn't. */
+.clipboard-mode {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.clipboard-mode::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--mint);
+  translate: 0 -1px;
+}
+.clipboard-mode.off::before {
+  background: var(--faint);
+}
+/* Files: a drop zone, which is also the file picker's label, the transfer's progress, and the files received. */
+.drop {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 26px 12px;
+  border: 2px dashed #34414a;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+.drop:hover,
+.drop.over {
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.drop:focus-within {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+.drop .icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--art);
+}
+.drop strong {
+  color: var(--text);
+  font-weight: 500;
+}
+/* Dimmed while a file is on its way. */
+.drop:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+/* A flat mint progress bar, the same in every browser. */
+progress {
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  background: var(--field);
+}
+progress::-webkit-progress-bar {
+  background: var(--field);
+}
+progress::-webkit-progress-value {
+  background: var(--mint);
+}
+progress::-moz-progress-bar {
+  background: var(--mint);
+}
+.downloads {
+  display: grid;
+}
+.download {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.download span {
+  display: grid;
+  margin-right: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.download small {
+  color: var(--muted);
+}
+
+/* --- Hide bars and full screen ------------------------------------------------------------------------------------ */
+
+/* Hide bars and full screen leave only the desktop: client/layout.js puts .fullscreen on the session for either. The
+   small bar shows for a moment, then fades (.quiet, after 3 seconds) until the pointer is over it or it has focus.
+   The drawer floats over the desktop. */
+.fs-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 3;
+  display: none;
+  gap: 6px;
+  padding: 6px;
+  translate: -50% 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #12191ee8;
+  box-shadow: 0 10px 30px #0008;
+  transition: opacity 0.2s steps(3);
+}
+.fullscreen {
+  grid-template-rows: 0 minmax(0, 1fr) 0;
+  background: #000;
+}
+.fullscreen .vbar,
+.fullscreen .vstrip,
+.fullscreen .chin,
+.fullscreen .napper {
+  display: none;
+}
+.fullscreen .vstage {
+  padding: 0;
+}
+.fullscreen .monitor {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
+}
+/* !important wins over the size client/layout.js gives the screen outside full screen. */
+.fullscreen .screen {
+  width: 100% !important;
+  height: 100% !important;
+  box-shadow: none;
+  background: #000;
+}
+.fullscreen .fs-bar {
+  display: flex;
+}
+.fullscreen.quiet .fs-bar:not(:hover):not(:focus-within) {
+  opacity: 0.25;
+}
+.fullscreen .drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: -12px 0 30px #0008;
+}
+
+/* --- Notices ------------------------------------------------------------------------------------------------------ */
+
+/* A message at the bottom center, just above the status strip, with a button that dismisses it; errors in the danger
+   color. */
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(46px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 10px 10px 16px;
+  translate: -50% 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #162028;
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 12px 32px #0009;
+}
+.notice.error {
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+.notice-dismiss {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+}
+.notice-dismiss:hover {
+  color: var(--text);
+}
+.notice-dismiss svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Smaller screens and reduced motion --------------------------------------------------------------------------- */
+
+/* Up to 900px wide the tool bar shows icons only and the drawer floats over the desktop. Up to 760px wide or 620px
+   tall the cats, and the room kept for them, shrink to 2px pixels. Up to 560px wide, as on a phone, the bars tighten,
+   the logo, the tip and the dividers go, and the drawer covers the whole width. With reduced motion the dots stay
+   lit and the small bar dims at once instead of fading. */
+@media (max-width: 900px) {
+  .vtools .label {
+    display: none;
+  }
+  .tool {
+    padding: 8px;
+  }
+  .vtools .ghost {
+    padding: 8px;
+  }
+  .drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    box-shadow: -12px 0 30px #0008;
+  }
+}
+@media (max-width: 760px), (max-height: 620px) {
+  :root {
+    --px: 2px;
+  }
+  .vstage {
+    padding-bottom: 14px;
+  }
+}
+@media (max-width: 560px) {
+  .vbar {
+    gap: 10px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+  .vbrand .logo,
+  .vstrip .tip,
+  .sep {
+    display: none;
+  }
+  .vtools {
+    gap: 2px;
+  }
+  .vtools .ghost {
+    margin-left: 2px;
+  }
+  .drawer {
+    left: 0;
+    width: auto;
+    border-left: 0;
+  }
+  .welcome-bar {
+    padding: 14px 16px;
+  }
+  .welcome-body {
+    padding-top: 96px;
+  }
+  .pair-card {
+    padding: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dots i {
+    animation: none;
+    opacity: 1;
+  }
+  .fs-bar {
+    transition: none;
+  }
+}
+
+/* --- Touch screens ------------------------------------------------------------------------------------------------ */
+
+/* Touch feedback in the app's mint instead of Android's default blue, and no text selection on a long press. Taps on
+   the desktop show no highlight at all. */
+* {
+  -webkit-tap-highlight-color: rgba(143, 235, 167, 0.18);
+}
+button,
+label,
+.nav-item {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+::selection {
+  background: #2c4a37;
+  color: #e6ede8;
+}
+video {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* --- Light mode --------------------------------------------------------------------------------------------------- */
+
+/* host.css's day colors. The monitor gets a white frame, like the house's windows by day, and a light screen while it
+   waits for the desktop; client/cats.js draws the cat as cream Sarigüeya. Full screen stays black. Shadows and glows
+   are lighter, and the touch colors take the day's green. */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #eef2f5;
+    --panel: #ffffff;
+    --field: #f6f8fa;
+    --raised: #f0f4f7;
+    --line: #dbe2e8;
+    --line-strong: #c4ced7;
+    --text: #1d2730;
+    --muted: #5b6a76;
+    --faint: #8a97a3;
+    --art: #46545f;
+    --mint: #23924c;
+    --mint-hover: #1d7f41;
+    --mint-ink: #ffffff;
+    --mint-tint: #e8f8ee;
+    --mint-line: #9ad5ad;
+    --warn: #9a6a12;
+    --warn-line: #e4c784;
+    --danger: #c0392b;
+    --danger-line: #efb3ab;
+  }
+  .logo {
+    background: #8feba7;
+    color: #0f2416;
+  }
+  .monitor {
+    background: #fbfcfd;
+    box-shadow:
+      0 0 0 2px #9aa6b1,
+      inset 0 0 0 2px #ffffff,
+      0 18px 40px #1d273024;
+  }
+  .screen {
+    background: #e3e9ee;
+    box-shadow: 0 0 0 2px #9aa6b1;
+  }
+  .wait {
+    background: radial-gradient(#ffffff, #e3e9ee 70%);
+  }
+  .led {
+    box-shadow: 0 0 8px #9a6a1266;
+  }
+  .session[data-state='connected'] .led {
+    box-shadow: 0 0 8px #23924c66;
+  }
+  .session[data-state='offline'] .led {
+    box-shadow: 0 0 8px #c0392b66;
+  }
+  .drop {
+    border-color: #b9c4ce;
+  }
+  .screens-menu {
+    box-shadow: 0 18px 40px #1d273026;
+  }
+  .fs-bar {
+    background: #ffffffe8;
+    box-shadow: 0 10px 30px #1d273033;
+  }
+  .notice {
+    background: var(--panel);
+    box-shadow: 0 12px 32px #1d273033;
+  }
+  * {
+    -webkit-tap-highlight-color: rgba(35, 146, 76, 0.14);
+  }
+  ::selection {
+    background: #bfe6cb;
+    color: #1d2730;
+  }
+}
+/* The floating drawer's shadow, by day. */
+@media (prefers-color-scheme: light) and (max-width: 900px) {
+  .drawer {
+    box-shadow: -12px 0 30px #1d273026;
+  }
+}

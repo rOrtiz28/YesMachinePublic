@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign in</title>
+    <link rel="stylesheet" href="../../../public/style.css" />
+    <link rel="stylesheet" href="frame.css" />
+    <link rel="stylesheet" href="day.css" />
+    <script src="../../../public/pixel-icons.js" defer></script>
+    <script src="../../../public/pixel-scene.js" defer></script>
+    <script src="frame.js" defer></script>
+  </head>
+  <body>
+    <section id="welcome" class="welcome" aria-labelledby="pair-heading">
+      <header class="welcome-bar">
+        <span class="brand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <span class="wordmark">yes machine</span>
+        </span>
+        <span class="pill live">Local network</span>
+      </header>
+      <div class="welcome-body">
+        <div class="pair-card">
+          <canvas id="welcome-cat" class="welcome-cat" aria-hidden="true"></canvas>
+          <h1 id="pair-heading">Connect to a computer</h1>
+          <p id="sign-in-help" class="sub">
+            Sign in with the user name and password you use on the computer you want to open.
+          </p>
+          <form id="pair-form" novalidate>
+            <label class="field-label" for="sign-in-user">User name</label>
+            <input
+              id="sign-in-user"
+              name="username"
+              maxlength="64"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-describedby="sign-in-help"
+            />
+            <label class="field-label" for="sign-in-password">Password</label>
+            <div class="password-field">
+              <input
+                id="sign-in-password"
+                name="password"
+                type="password"
+                maxlength="1024"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="reveal"
+                id="sign-in-reveal"
+                data-reveal="sign-in-password"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <span class="icon" data-icon="eye"></span>
+              </button>
+            </div>
+            <button id="connect-button" class="primary" type="submit">
+              <span class="icon" data-icon="play"></span>
+              <span id="connect-label">Connect</span>
+            </button>
+          </form>
+          <p class="hint">Connect only to a computer you trust.</p>
+        </div>
+        <details class="setup-help">
+          <summary>First time here? How it works</summary>
+          <ol>
+            <li>Open Yes Machine on the computer and allow screen and input access.</li>
+            <li>Connect both devices to the same local network, over Wi-Fi or Ethernet.</li>
+            <li>
+              Open the computer’s HTTPS address on this device, then sign in with that computer’s
+              user name and password.
+            </li>
+          </ol>
+          <p class="hint">
+            Your browser may ask you to trust a local certificate first. Open its certificate
+            details and compare the SHA-256 fingerprint with the one shown in Yes Machine on the
+            computer. Continue only if they match exactly.
+          </p>
+        </details>
+      </div>
+    </section>
+  </body>
+</html>

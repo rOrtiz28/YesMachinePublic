@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in Android's Accessibility settings beside Yes Machine. -->
+    <string name="control_description">Lets a computer you connect to with Yes Machine touch, type and use Back, Home and Recents on this device, while you share its screen. When the computer asks, it also looks at what you copied, for the shared clipboard.</string>
+</resources>

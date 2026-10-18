@@ -1,0 +1,311 @@
+/* Preview only: a tablet screen at the SM-X230's size in CSS pixels, with Android's bars, a photo gallery the file is
+   shared from, Android's share sheet, and a notification. Only the dialog is Yes Machine's, in the app's styles. */
+html,
+body {
+  height: 100%;
+}
+body.tablet {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: #101317;
+  color: #e7eaee;
+  font:
+    14px/1.4 system-ui,
+    -apple-system,
+    sans-serif;
+}
+.android-status {
+  display: flex;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 22px;
+  align-items: center;
+  font-size: 12px;
+}
+.gallery header {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  padding: 18px 28px 10px;
+}
+.gallery header strong {
+  font-size: 26px;
+  font-weight: 600;
+}
+.gallery nav {
+  display: flex;
+  gap: 22px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+.gallery nav .on {
+  opacity: 1;
+  font-weight: 600;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 4px;
+}
+.gallery .day {
+  margin: 6px 28px 10px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+.photos {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 0 28px;
+}
+.photos i {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--a), var(--b));
+}
+.photos i.picked {
+  outline: 3px solid #6aa7ff;
+  outline-offset: -3px;
+}
+.photos i.picked::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #6aa7ff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.android-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+}
+.android-nav b {
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e7eaeecc;
+}
+
+.share-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 3;
+  width: 640px;
+  translate: -50% 0;
+  padding: 10px 26px 34px;
+  border-radius: 28px 28px 0 0;
+  background: #1f2329;
+  box-shadow: 0 -10px 40px #0009;
+}
+.share-sheet[hidden] {
+  display: none;
+}
+.grip {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 18px;
+  border-radius: 2px;
+  background: #ffffff40;
+}
+.share-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #ffffff1a;
+}
+.share-head .thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f0a35e, #7a4bb5);
+}
+.share-head strong {
+  display: block;
+  font-weight: 600;
+}
+.share-head small {
+  opacity: 0.7;
+}
+.share-apps {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding-top: 20px;
+  font-size: 12px;
+  text-align: center;
+}
+.share-app {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px 2px;
+  border-radius: 14px;
+}
+.share-app i {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--a, #8fc4ff), var(--b, #3a6fd8));
+}
+.share-app .c1 {
+  --a: #7fe0a0;
+  --b: #2e9e5b;
+}
+.share-app .c2 {
+  --a: #ff9f9f;
+  --b: #d9465f;
+}
+.share-app .c3 {
+  --a: #ffd27a;
+  --b: #f08a3c;
+}
+.share-app .c4 {
+  --a: #fff1a8;
+  --b: #e0b43c;
+}
+.share-app .c5 {
+  --a: #9fc6ff;
+  --b: #3a6fd8;
+}
+.share-app.chosen {
+  background: #ffffff14;
+  outline: 2px solid #8feba7;
+}
+i.ym {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #0b0f12;
+  box-shadow: inset 0 0 0 2px #8feba7;
+}
+i.ym b {
+  color: #8feba7;
+  font:
+    700 20px/1 'Pixelify Sans',
+    monospace;
+}
+i.ym.small {
+  width: 20px;
+  height: 20px;
+}
+i.ym.small b {
+  font-size: 10px;
+}
+
+.tablet dialog {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  font: 400 13px/1.5 var(--mono);
+}
+.tablet dialog[open] {
+  z-index: 3;
+}
+.tablet .scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #05080aa6;
+}
+.send-dialog .who .icon svg {
+  width: 26px;
+  height: 26px;
+}
+.send-progress {
+  display: grid;
+  gap: 8px;
+}
+.send-progress progress {
+  width: 100%;
+  accent-color: var(--mint);
+}
+.send-progress[hidden] {
+  display: none;
+}
+.send-dialog p:empty {
+  display: none;
+}
+
+.heads-up {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  gap: 4px;
+  width: 560px;
+  translate: -50% 0;
+  padding: 16px 20px 12px;
+  border-radius: 24px;
+  background: #262b31;
+  box-shadow: 0 12px 40px #000a;
+  font-size: 13px;
+}
+.heads-up[hidden] {
+  display: none;
+}
+.heads-up-app {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+.heads-up strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.heads-up-actions {
+  display: flex;
+  gap: 26px;
+  margin-top: 10px;
+  color: #9cc8ff;
+  font-weight: 600;
+}
+
+:root[data-theme='light'] body.tablet {
+  background: #f6f7f9;
+  color: #1b1f24;
+}
+:root[data-theme='light'] .share-sheet {
+  background: #eef0f4;
+  box-shadow: 0 -10px 40px #1d273030;
+}
+:root[data-theme='light'] .grip {
+  background: #0000002e;
+}
+:root[data-theme='light'] .share-head {
+  border-color: #0000001a;
+}
+:root[data-theme='light'] .share-app.chosen {
+  background: #0000000d;
+  outline-color: #2e9e5b;
+}
+:root[data-theme='light'] .android-nav b {
+  background: #1b1f24aa;
+}
+:root[data-theme='light'] .heads-up {
+  background: #ffffff;
+  box-shadow: 0 12px 40px #1d273040;
+}
+:root[data-theme='light'] .heads-up-actions {
+  color: #2563c9;
+}
+:root[data-theme='light'] .tablet .scrim {
+  background: #1d27305c;
+}

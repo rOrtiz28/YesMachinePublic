@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Viewers by Day</title>
+    <style>
+      /* Prototype only: the two viewer windows and the sign-in page, by night and by day, each at its real size and
+     scaled to fit. The frames load the real markup with the app's own style sheets plus the proposal in
+     viewer-light/day.css and viewer-light/bar.css. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+      }
+      body.day {
+        background: #eef2f5;
+        color: #1d2730;
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      h2 {
+        margin: 14px 0 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+      }
+      .intro p,
+      .lead {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 14px;
+        margin-top: 16px;
+      }
+      .group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .group span {
+        align-self: center;
+        margin-right: 4px;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
+      .controls button,
+      .again {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      body.day .controls button,
+      body.day .again {
+        background: #fff;
+        border-color: #d7dee4;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+      .frame {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+      }
+      body.day .frame {
+        border-color: #d7dee4;
+      }
+      .frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 0;
+        transform-origin: 0 0;
+      }
+      .closed {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 14px;
+        padding: 24px;
+        background: #0d1115f2;
+        text-align: center;
+      }
+      body.day .closed {
+        background: #eef2f5f2;
+      }
+      .closed[hidden] {
+        display: none;
+      }
+      .toast {
+        padding: 12px 18px;
+        border: 1px solid #2b3741;
+        border-radius: 10px;
+        background: #162028;
+        font-size: 12px;
+        box-shadow: 0 12px 32px #0009;
+      }
+      body.day .toast {
+        background: #fff;
+        border-color: #c4ced7;
+        box-shadow: 0 12px 32px #1d273033;
+      }
+      .closed p {
+        margin: 0;
+        max-width: 56ch;
+        opacity: 0.75;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Viewers by Day</h1>
+        <p>
+          The window you see another computer in, the window you see an Android device in, and the
+          sign-in page a browser shows first. Each frame is the real page at its real size, scaled
+          down to fit.
+        </p>
+        <div class="controls">
+          <div class="group" role="group" aria-label="Light">
+            <span>Light</span>
+            <button type="button" data-theme="night" aria-pressed="false">Night</button>
+            <button type="button" data-theme="day" aria-pressed="true">Day</button>
+          </div>
+          <div class="group" role="group" aria-label="Session">
+            <span>Session</span>
+            <button type="button" data-state="connected" aria-pressed="true">Connected</button>
+            <button type="button" data-state="pending" aria-pressed="false">Connecting</button>
+          </div>
+          <div class="group" role="group" aria-label="Tools">
+            <span>Tools</span>
+            <button type="button" data-panel="none" aria-pressed="true">Closed</button>
+            <button type="button" data-panel="keyboard" aria-pressed="false">Keyboard</button>
+            <button type="button" data-panel="clipboard" aria-pressed="false">Clipboard</button>
+            <button type="button" data-panel="files" aria-pressed="false">Files</button>
+          </div>
+          <div class="group" role="group" aria-label="Frames by day">
+            <span>Frames by day</span>
+            <button type="button" data-frames="light" aria-pressed="true">White</button>
+            <button type="button" data-frames="dark" aria-pressed="false">Black</button>
+          </div>
+        </div>
+      </header>
+
+      <h2>Another computer</h2>
+      <div class="frame" data-width="1280" data-height="820">
+        <iframe
+          id="computer"
+          title="Computer viewer"
+          src="viewer-light/computer.html?theme=day&amp;state=connected&amp;panel=none&amp;frames=light"
+        ></iframe>
+      </div>
+
+      <h2>An Android device, with Disconnect</h2>
+      <p class="lead">
+        Disconnect sits at the far right, as in the computer viewer. It closes this window, and the
+        main window comes to the front saying you disconnected. Try it.
+      </p>
+      <div class="frame" data-width="1280" data-height="900">
+        <iframe
+          id="android"
+          title="Android viewer"
+          src="viewer-light/android.html?theme=day&amp;state=connected&amp;frames=light"
+        ></iframe>
+        <div class="closed" id="closed" hidden>
+          <div class="toast">Disconnected from Alejandro’s Tab A11+.</div>
+          <p>
+            The window closed, and the main window came to the front with this message, the same one
+            a computer gets.
+          </p>
+          <button type="button" class="again" id="again">Open it again</button>
+        </div>
+      </div>
+
+      <h2>Signing in, in a browser</h2>
+      <div class="frame" data-width="1280" data-height="820">
+        <iframe id="welcome" title="Sign in" src="viewer-light/welcome.html?theme=day"></iframe>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>The same colors as the main window by day.</b>
+          Panels turn white, text dark, and mint buttons dark green with white text; the logo keeps
+          its mint.
+        </li>
+        <li>
+          <b>The monitor gets a white frame</b>
+          , like the house's windows by day, and its screen turns light while it waits for the
+          desktop. The Android device gets the same frame. “Frames by day” shows them black instead,
+          to compare.
+        </li>
+        <li>
+          <b>Sarigüeya naps on the monitor in cream</b>
+          , with her tail cream and outlined too, hanging past the corner.
+        </li>
+        <li>
+          <b>Full screen stays black</b>
+          around the desktop, night or day, so nothing bright sits beside what you are looking at.
+        </li>
+        <li>
+          <b>Which one shows:</b>
+          in the app, the viewer windows follow the sun and moon at the top of the main window, and
+          change at the same moment its colors do. A browser follows its device's light or dark
+          setting. The Yes Machine app on the tablet stays at night for now; its own screens would
+          get day mode together, as a later step.
+        </li>
+        <li>
+          <b>The Android bar makes room for Disconnect.</b>
+          At the size the window opens, 1280 pixels, the middle buttons show only their icons; their
+          names come back above 1580. Narrower, Back, Home and Recents lose their names too, and
+          Disconnect keeps its name longest, as in the computer viewer. Nothing overlaps at any
+          size.
+        </li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const state = {
+        theme: 'day',
+        state: 'connected',
+        panel: 'none',
+        frames: 'light',
+        ...Object.fromEntries(new URLSearchParams(location.search)),
+      };
+      const frames = [...document.querySelectorAll('.frame')];
+      function scale() {
+        for (const frame of frames) {
+          const width = +frame.dataset.width,
+            height = +frame.dataset.height,
+            s = frame.clientWidth / width,
+            iframe = frame.querySelector('iframe');
+          frame.style.height = `${Math.round(height * s)}px`;
+          Object.assign(iframe.style, {
+            width: `${width}px`,
+            height: `${height}px`,
+            transform: `scale(${s})`,
+          });
+        }
+      }
+      new ResizeObserver(scale).observe(document.querySelector('.page'));
+      function send() {
+        document.body.classList.toggle('day', state.theme === 'day');
+        for (const iframe of document.querySelectorAll('iframe'))
+          iframe.contentWindow?.postMessage(state, '*');
+        for (const button of document.querySelectorAll('.controls button')) {
+          const [key, value] = Object.entries(button.dataset)[0];
+          button.setAttribute('aria-pressed', String(state[key] === value));
+        }
+      }
+      document.querySelector('.controls').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const [key, value] = Object.entries(button.dataset)[0];
+        state[key] = value;
+        send();
+      });
+      for (const iframe of document.querySelectorAll('iframe'))
+        iframe.addEventListener('load', send);
+      addEventListener('message', (event) => {
+        if (event.data?.disconnected) document.getElementById('closed').hidden = false;
+      });
+      document.getElementById('again').addEventListener('click', () => {
+        document.getElementById('closed').hidden = true;
+      });
+      send();
+    </script>
+  </body>
+</html>

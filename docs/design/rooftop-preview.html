@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Yes Machine Rooftop</title>
+    <link rel="stylesheet" href="../../src/windows/host/host.css" />
+    <style>
+      /* Layout: the real home screen at its default window size inside a frame, with the network list drawn as a
+     house: tiled roof with the cat on the ridge, one lit window per computer, then the street. Colors and
+     type come from the app's own host.css tokens. */
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding-inline: max(16px, 3vw);
+        padding-block: 32px 64px;
+        display: grid;
+        gap: 22px;
+      }
+      .intro h1 {
+        font-size: clamp(30px, 4vw, 44px);
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 70ch;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px 28px;
+        align-items: flex-end;
+      }
+      .group {
+        display: grid;
+        gap: 8px;
+      }
+      .group-label {
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .segmented {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .segmented button {
+        padding: 9px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--raised);
+        font-size: 13px;
+      }
+      .segmented button[aria-pressed='true'] {
+        background: var(--mint);
+        border-color: var(--mint);
+        color: var(--mint-ink);
+      }
+      .frame {
+        overflow-x: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 14px;
+        background: var(--bg);
+      }
+      .mock {
+        width: 1240px;
+        height: auto;
+      }
+      .mock-main {
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        padding: 20px var(--gutter) 0;
+        min-width: 0;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 74ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--muted);
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+      }
+      .notes b {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* The house. The canvas paints sky, roof, wall and street; the cards sit on the wall as windows. */
+      .house {
+        position: relative;
+        margin: 0 calc(var(--gutter) * -1);
+      }
+      .house-art {
+        position: absolute;
+        left: 0;
+        top: 0;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+      .house-sky {
+        position: relative;
+        height: 96px;
+        display: flex;
+        align-items: flex-end;
+        padding: 0 var(--gutter) 14px;
+      }
+      .house-roof {
+        height: 66px;
+      }
+      .house-facade {
+        position: relative;
+        padding: 30px 60px 78px;
+      }
+      .house-street {
+        height: 66px;
+      }
+      .house .devices {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 32px 26px;
+      }
+      .house .device-main {
+        border: 2px solid #2a343c;
+        border-radius: 3px;
+        background: #0d1317;
+      }
+      .house .device.online .device-main {
+        border-color: #3e6b4d;
+        background: #12201a;
+        box-shadow:
+          inset 0 0 26px #8feba71a,
+          0 0 26px #8feba712;
+      }
+      .house .device.current .device-main {
+        border-color: var(--mint);
+        background: var(--mint-tint);
+      }
+      .house .device::after {
+        content: '';
+        position: absolute;
+        left: -8px;
+        right: -8px;
+        bottom: -10px;
+        height: 6px;
+        background: #2b353c;
+        box-shadow: 0 3px 0 #0a0f12;
+      }
+      .house .device.add::after {
+        display: none;
+      }
+      .house .device.add .device-main {
+        border: 2px dashed #34414a;
+        background: #0d131780;
+      }
+      .house-more {
+        display: flex;
+        justify-content: center;
+        margin-top: 28px;
+      }
+      .house-more .ghost {
+        background: #121a20;
+      }
+      .house-more[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="intro">
+        <h1>Rooftop</h1>
+        <p>
+          A prototype of the network list drawn as a house. Every computer is a window: lit when it
+          is sharing, dark when it is off. The cat sits on the roof, and more computers add more
+          floors instead of covering the scene.
+        </p>
+      </header>
+
+      <div class="controls" aria-label="Prototype controls">
+        <div class="group" role="group" aria-labelledby="count-label">
+          <span id="count-label" class="group-label">Computers on the network</span>
+          <div class="segmented">
+            <button type="button" id="count-3" data-count="3" aria-pressed="false">3</button>
+            <button type="button" id="count-6" data-count="6" aria-pressed="false">6</button>
+            <button type="button" id="count-14" data-count="14" aria-pressed="true">14</button>
+          </div>
+        </div>
+        <div class="group" role="group" aria-labelledby="mood-label">
+          <span id="mood-label" class="group-label">Cat</span>
+          <div class="segmented">
+            <button type="button" id="mood-sleep" data-mood="sleep" aria-pressed="false">
+              Asleep
+            </button>
+            <button type="button" id="mood-awake" data-mood="awake" aria-pressed="true">
+              Awake
+            </button>
+            <button type="button" id="mood-happy" data-mood="happy" aria-pressed="false">
+              Happy
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div class="app mock">
+          <header class="titlebar">
+            <div class="brand">
+              <span class="logo" aria-hidden="true">ym</span>
+              <span class="wordmark">yes machine</span>
+            </div>
+            <span class="pill live">Local</span>
+          </header>
+          <nav class="sidebar" aria-label="Sections">
+            <button type="button" class="nav-item" aria-label="Home" aria-current="page">
+              <span class="icon" data-icon="home"></span>
+            </button>
+            <button type="button" class="nav-item" aria-label="Settings">
+              <span class="icon" data-icon="settings"></span>
+            </button>
+            <span class="version">v0.1.0</span>
+          </nav>
+          <div class="mock-main">
+            <div class="hero">
+              <div>
+                <h1>
+                  Yes,
+                  <span>from here.</span>
+                </h1>
+                <p class="lede">Open your desktop from another device.</p>
+              </div>
+              <div class="link-art" aria-hidden="true">
+                <span class="icon" data-icon="laptop"></span>
+                <span class="wire">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </span>
+                <span class="logo outline">ym</span>
+                <span class="wire">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </span>
+                <span class="icon" data-icon="monitor"></span>
+              </div>
+            </div>
+            <div class="cards">
+              <section class="card" aria-label="This computer">
+                <div class="card-head">
+                  <span class="card-icon icon" data-icon="laptop"></span>
+                  <div>
+                    <h2>This computer</h2>
+                    <p class="sub">Alejandros-MacBook</p>
+                  </div>
+                  <span class="pill">Not sharing</span>
+                </div>
+                <span class="field-label">Share on network</span>
+                <div class="select">
+                  <select aria-label="Network">
+                    <option>192.168.1.52 · en0</option>
+                  </select>
+                  <span class="icon" data-icon="chevron-down"></span>
+                </div>
+                <button class="primary" type="button">
+                  <span class="icon" data-icon="play"></span>
+                  <span>Start sharing</span>
+                  <span class="icon end" data-icon="chevron-right"></span>
+                </button>
+              </section>
+              <section class="card" aria-label="Shared desktop">
+                <div class="card-head">
+                  <span class="card-icon icon" data-icon="monitor"></span>
+                  <h2>Shared desktop</h2>
+                  <span class="audio-toggle">
+                    Audio on
+                    <span class="icon" data-icon="speaker-on"></span>
+                  </span>
+                </div>
+                <div class="preview">
+                  <div id="preview-placeholder">
+                    <span class="icon" data-icon="monitor"></span>
+                    <p>Your desktop appears here when you start sharing.</p>
+                  </div>
+                </div>
+                <p class="viewer">No viewer connected</p>
+              </section>
+            </div>
+
+            <section class="house" id="house" aria-labelledby="network-title">
+              <canvas class="house-art" id="house-art" aria-hidden="true"></canvas>
+              <div class="house-sky" id="house-sky">
+                <div class="section-head">
+                  <span class="icon" data-icon="network"></span>
+                  <div>
+                    <h2 id="network-title">On your network</h2>
+                    <p class="sub">Double-click a computer to connect.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="house-roof" aria-hidden="true"></div>
+              <div class="house-facade">
+                <div id="devices" class="devices" role="list" aria-label="Computers"></div>
+                <div class="house-more" id="house-more">
+                  <button type="button" class="ghost" id="show-all">
+                    <span class="icon" data-icon="chevron-down"></span>
+                    <span id="show-all-label">Show all</span>
+                  </button>
+                </div>
+              </div>
+              <div class="house-street" id="house-street" aria-hidden="true"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>Windows.</b>
+          A computer that is sharing has a lit window. A saved computer that is off has a dark one,
+          so you can tell at a glance.
+        </li>
+        <li>
+          <b>Many computers.</b>
+          Up to two floors show at first. Show all adds the remaining floors, and the street always
+          stays at the bottom.
+        </li>
+        <li>
+          <b>The house moves.</b>
+          Smoke comes out of the chimney, the antenna light pulses, the street lamps flicker now and
+          then, and the cat keeps its moods.
+        </li>
+      </ul>
+    </div>
+
+    <script src="../../public/pixel-icons.js"></script>
+    <script src="../../public/pixel-scene.js"></script>
+    <script>
+      'use strict';
+      const S = 3,
+        $ = (id) => document.getElementById(id);
+      const EXTRA = {
+        roofRidge: '#3a464e',
+        roofLip: '#2b363e',
+        roofBody: '#1d262d',
+        roofSeam: '#151c22',
+        roofShade: '#11181d',
+        roofEdge: '#2f3a42',
+        fascia: '#2c363d',
+        shadow: '#0b1014',
+        wall: '#141b21',
+        mortar: '#10161b',
+        quoin: '#1a2228',
+        brick: '#1b2329',
+        door: '#1d272e',
+        skyline: '#11171d',
+        skylineWindow: '#284434',
+        walk: '#1b2329',
+        walkEdge: '#3a454c',
+        walkJoint: '#151c21',
+        road: '#0e1317',
+        lane: '#2a3238',
+        post: '#2f3a42',
+        postLight: '#3d4950',
+        bulb: '#d4f7df',
+        bulbDim: '#5d6b62',
+        glow: '#1c2c24',
+        pool: '#1e2f26',
+        moon: '#c5ced3',
+        smoke: '#56616a',
+        smokeDim: '#333d45',
+      };
+      const hex = (value) => {
+        const n = parseInt(value.slice(1), 16);
+        return [n >> 16, (n >> 8) & 255, n & 255, 255];
+      };
+      const C = Object.fromEntries(
+        Object.entries({ ...PixelScene.PALETTE, ...EXTRA }).map(([k, v]) => [k, hex(v)]),
+      );
+      const PLATFORMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
+      const DEVICES = [
+        ['Office-PC', '192.168.1.60', 'win32', true],
+        ['Living-Room', '192.168.1.71', 'linux', true],
+        ['Studio-Linux', '192.168.29.100', 'linux', true],
+        ['Old-MacBook', '192.168.1.90', 'darwin', false],
+        ['Lab-01', '192.168.1.101', 'linux', true],
+        ['Lab-02', '192.168.1.102', 'linux', false],
+        ['Reception', '192.168.1.40', 'win32', true],
+        ['Design-iMac', '192.168.1.33', 'darwin', true],
+        ['Server-Room', '192.168.1.5', 'linux', true],
+        ['Kitchen-PC', '192.168.1.77', 'win32', false],
+        ['Lab-03', '192.168.1.103', 'linux', true],
+        ['Mini-Mac', '192.168.1.34', 'darwin', true],
+        ['Garage', '192.168.1.80', 'linux', false],
+        ['Lab-04', '192.168.1.104', 'linux', true],
+      ].map(([name, address, platform, online]) => ({ name, address, platform, online }));
+
+      let count = 14,
+        expanded = false,
+        mood = 'awake';
+
+      function card(item, extra = '') {
+        const node = document.createElement('div'),
+          main = document.createElement(item.current ? 'div' : 'button'),
+          text = document.createElement('span');
+        node.className = `device${item.online ? ' online' : ''}${extra}`;
+        node.setAttribute('role', 'listitem');
+        if (!item.current) main.type = 'button';
+        main.className = 'device-main';
+        text.className = 'device-text';
+        text.innerHTML = '<strong></strong><small></small>';
+        text.firstChild.textContent = item.name;
+        text.lastChild.textContent = item.current ? 'This device' : item.address;
+        const icon = document.createElement('span');
+        icon.className = 'icon';
+        icon.dataset.icon = item.platform === 'darwin' ? 'laptop' : 'monitor';
+        const dot = document.createElement('span');
+        dot.className = 'status';
+        main.append(icon, text, dot);
+        if (!item.current)
+          main.title = `${PLATFORMS[item.platform]} · ${item.online ? 'online' : 'offline'}`;
+        node.append(main);
+        return node;
+      }
+      function renderDevices() {
+        const others = DEVICES.slice(0, count),
+          shown = expanded ? others : others.slice(0, 6);
+        const add = document.createElement('div');
+        add.className = 'device add';
+        add.setAttribute('role', 'listitem');
+        add.innerHTML =
+          '<button type="button" class="device-main"><span class="icon" data-icon="plus"></span>Add computer</button>';
+        $('devices').replaceChildren(
+          card({ name: 'Alejandros-MacBook', platform: 'darwin', current: true }, ' current'),
+          ...shown.map((item) => card(item)),
+          add,
+        );
+        $('house-more').hidden = others.length <= 6;
+        $('show-all-label').textContent = expanded
+          ? 'Show fewer'
+          : `Show all ${others.length} computers`;
+        $('show-all').querySelector('.icon').dataset.icon = expanded
+          ? 'chevron-right'
+          : 'chevron-down';
+        PixelIcons.render($('house'));
+        requestAnimationFrame(layout);
+      }
+
+      // Pixel art for the house, redrawn whenever the list changes height.
+      const canvas = $('house-art'),
+        ctx = canvas.getContext('2d');
+      let G = null,
+        base = null,
+        image = null,
+        t = 0;
+      function rng(seed) {
+        let a = seed >>> 0;
+        return () => {
+          a = (a + 0x6d2b79f5) | 0;
+          let x = Math.imul(a ^ (a >>> 15), 1 | a);
+          x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+          return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      function put(buffer, x, y, color) {
+        if (x >= 0 && y >= 0 && x < G.w && y < G.h) buffer.set(color, (y * G.w + x) * 4);
+      }
+      function layout() {
+        const house = $('house'),
+          w = Math.floor(house.clientWidth / S),
+          h = Math.floor(house.clientHeight / S);
+        canvas.width = w;
+        canvas.height = h;
+        canvas.style.width = `${w * S}px`;
+        canvas.style.height = `${h * S}px`;
+        const roofTop = Math.round($('house-sky').offsetHeight / S);
+        G = {
+          w,
+          h,
+          roofTop,
+          roofH: 22,
+          streetTop: Math.round($('house-street').offsetTop / S),
+          fx0: 6,
+          fx1: w - 7,
+          chimney: Math.floor(w * 0.44),
+          antenna: Math.floor(w * 0.87),
+          catX: Math.floor(w * 0.66) - 9,
+          lamps: [11, w - 12],
+        };
+        G.facadeTop = roofTop + G.roofH;
+        G.door = Math.floor(w / 2) - 6;
+        base = new Uint8ClampedArray(w * h * 4);
+        image = ctx.createImageData(w, h);
+        paintStatic();
+        draw();
+      }
+      function paintStatic() {
+        const r = rng(11),
+          { w, roofTop, roofH, facadeTop, streetTop, fx0, fx1 } = G;
+        // Moon and distant skyline behind the roof.
+        for (let y = -4; y <= 4; y++)
+          for (let x = -4; x <= 4; x++)
+            if (x * x + y * y <= 17 && (x + 2) ** 2 + (y - 1) ** 2 > 12)
+              put(base, w - 34 + x, 9 + y, C.moon);
+        for (let x = Math.floor(w * 0.4); x < w;) {
+          const bw = 7 + ((r() * 9) | 0),
+            bh = 5 + ((r() * 13) | 0),
+            top = roofTop - bh;
+          for (let y = top; y < facadeTop; y++)
+            for (let xx = x; xx < x + bw; xx++) put(base, xx, y, C.skyline);
+          for (let y = top + 2; y < roofTop; y += 3)
+            for (let xx = x + 2; xx < x + bw - 1; xx += 3)
+              if (r() < 0.3) put(base, xx, y, C.skylineWindow);
+          x += bw + 1 + ((r() * 3) | 0);
+        }
+        // Tiled roof: a ridge, staggered courses of tiles, sloped ends and the eave board.
+        const inset = 10;
+        for (let i = 0; i < roofH; i++) {
+          const y = roofTop + i;
+          if (i >= roofH - 2) {
+            for (let x = 0; x < w; x++) put(base, x, y, i === roofH - 2 ? C.fascia : C.shadow);
+            continue;
+          }
+          const left = Math.max(0, inset - Math.floor((i * inset) / (roofH - 3))),
+            right = w - 1 - left;
+          for (let x = left; x <= right; x++) {
+            let color = C.roofRidge;
+            if (i > 0) {
+              const k = (i - 1) % 4,
+                course = Math.floor((i - 1) / 4);
+              color =
+                k === 0
+                  ? C.roofLip
+                  : k === 3
+                    ? C.roofShade
+                    : (x + (course % 2) * 4) % 8 === 0
+                      ? C.roofSeam
+                      : C.roofBody;
+            }
+            put(base, x, y, x === left || x === right ? C.roofEdge : color);
+          }
+        }
+        // Brick chimney with a cap, and the antenna mast.
+        const cx = G.chimney;
+        for (let y = roofTop - 11; y <= roofTop + 9; y++)
+          for (let x = cx; x < cx + 10; x++) {
+            const row = y - roofTop + 11;
+            put(
+              base,
+              x,
+              y,
+              row % 3 === 2 || (x - cx + (Math.floor(row / 3) % 2) * 3) % 6 === 0
+                ? C.mortar
+                : C.brick,
+            );
+          }
+        for (let x = cx - 1; x < cx + 11; x++) {
+          put(base, x, roofTop - 13, C.roofEdge);
+          put(base, x, roofTop - 12, C.fascia);
+        }
+        for (let y = roofTop - 14; y < roofTop; y++) put(base, G.antenna, y, C.postLight);
+        for (let d = -3; d <= 3; d++) put(base, G.antenna + d, roofTop - 11, C.post);
+        for (let d = -2; d <= 2; d++) put(base, G.antenna + d, roofTop - 7, C.post);
+        // Brick wall with corner stones.
+        for (let y = facadeTop; y < streetTop; y++)
+          for (let x = fx0; x <= fx1; x++) {
+            const row = y - facadeTop,
+              course = Math.floor(row / 5);
+            let color = row % 5 === 4 || (x + (course % 2) * 6) % 12 === 0 ? C.mortar : C.wall;
+            if ((x - fx0 < 4 || fx1 - x < 4) && course % 2 === 0) color = C.quoin;
+            put(base, x, y, row === 0 ? C.shadow : color);
+          }
+        // Front door with a small window and a step.
+        const dx = G.door,
+          dy = streetTop - 20;
+        for (let y = dy; y < streetTop; y++)
+          for (let x = dx; x < dx + 12; x++) {
+            const edge = x === dx || x === dx + 11 || y === dy;
+            put(base, x, y, edge ? C.fascia : x === dx + 6 ? C.mortar : C.door);
+          }
+        for (let y = dy + 3; y < dy + 6; y++)
+          for (let x = dx + 3; x < dx + 9; x++)
+            put(base, x, y, x === dx + 6 ? C.mortar : C.windowDim);
+        put(base, dx + 9, dy + 12, C.ledgeShine);
+        // Sidewalk, curb and road with lane marks.
+        for (let y = streetTop; y < G.h; y++) {
+          const row = y - streetTop;
+          for (let x = 0; x < w; x++) {
+            let color =
+              row === 0
+                ? C.walkEdge
+                : row < 6
+                  ? x % 16 === 0
+                    ? C.walkJoint
+                    : C.walk
+                  : row === 6
+                    ? C.fascia
+                    : row === 7
+                      ? C.shadow
+                      : C.road;
+            if (row === 14 && x % 16 < 8) color = C.lane;
+            put(base, x, y, color);
+          }
+        }
+        for (let x = dx - 2; x < dx + 14; x++) {
+          put(base, x, streetTop, C.fascia);
+          put(base, x, streetTop + 1, C.roofEdge);
+        }
+        // Street lamp posts.
+        for (const lx of G.lamps) {
+          for (let y = streetTop - 22; y < streetTop + 4; y++) {
+            put(base, lx, y, C.post);
+            put(base, lx + 1, y, C.postLight);
+          }
+          for (let x = lx - 3; x <= lx + 4; x++) put(base, x, streetTop - 25, C.postLight);
+          for (let x = lx - 2; x <= lx + 3; x++) put(base, x, streetTop - 24, C.post);
+          for (let x = lx - 1; x <= lx + 2; x++) put(base, x, streetTop + 4, C.postLight);
+        }
+      }
+
+      // Animated parts: stars, chimney smoke, antenna light, lamps and the cat.
+      const stars = Array.from({ length: 24 }, (_, i) => ({
+        x: (i * 53 + 17) % 400,
+        y: 3 + ((i * 29) % 16),
+        next: 20 + ((i * 37) % 90),
+        boost: 0,
+      }));
+      const smoke = [],
+        floaters = [];
+      const cat = {
+        tail: 'curl',
+        hold: 6,
+        step: 0,
+        face: null,
+        faceTicks: 0,
+        nextLook: 40,
+        flick: null,
+        flickTicks: 0,
+        nextFlick: 50,
+        nextZ: 4,
+      };
+      let lampDim = [0, 0];
+      function tick() {
+        t++;
+        for (const s of stars) {
+          if (s.boost) s.boost--;
+          else if (--s.next <= 0) {
+            s.boost = 3;
+            s.next = 40 + ((Math.random() * 90) | 0);
+          }
+        }
+        if (t % 9 === 0)
+          smoke.push({ x: G.chimney + 4 + ((Math.random() * 2) | 0), y: G.roofTop - 14, age: 0 });
+        for (const p of smoke) {
+          p.age++;
+          if (p.age % 2 === 0) p.y--;
+          if (p.age % 3 === 0) p.x++;
+        }
+        for (let i = smoke.length - 1; i >= 0; i--) if (smoke[i].age > 22) smoke.splice(i, 1);
+        lampDim = lampDim.map((v) => (v ? v - 1 : Math.random() < 0.006 ? 2 : 0));
+        for (const p of floaters) {
+          p.age++;
+          if (p.age % 2 === 0) p.y--;
+          if (p.kind === 'z' && p.age % 5 === 0) p.x++;
+        }
+        for (let i = floaters.length - 1; i >= 0; i--)
+          if (floaters[i].age > 28) floaters.splice(i, 1);
+        stepCat();
+        draw();
+      }
+      function stepCat() {
+        if (mood === 'sleep') {
+          if (--cat.nextZ <= 0) {
+            floaters.push({ kind: 'z', x: G.catX + 14, y: G.roofTop - 17, age: 0 });
+            cat.nextZ = 16;
+          }
+          return;
+        }
+        if (cat.flickTicks && --cat.flickTicks === 0) cat.flick = null;
+        if (--cat.nextFlick <= 0) {
+          cat.flick = Math.random() < 0.5 ? 'L' : 'R';
+          cat.flickTicks = 2;
+          cat.nextFlick = 40 + ((Math.random() * 70) | 0);
+        }
+        if (mood === 'happy') {
+          if (t % 2 === 0) cat.tail = cat.tail === 'wagL' ? 'wagR' : 'wagL';
+        } else if (--cat.hold <= 0) {
+          cat.step = (cat.step + 1) % 4;
+          cat.tail = ['curl', 'up', 'tilt', 'up'][cat.step];
+          cat.hold =
+            cat.tail === 'curl' ? 6 + ((Math.random() * 14) | 0) : 2 + ((Math.random() * 3) | 0);
+        }
+        if (cat.faceTicks) {
+          cat.faceTicks--;
+          cat.face = !cat.faceTicks
+            ? null
+            : mood === 'happy'
+              ? 'happy'
+              : cat.faceTicks === 9
+                ? 'blink'
+                : 'look';
+        } else if (--cat.nextLook <= 0) {
+          cat.faceTicks = 22;
+          cat.face = mood === 'happy' ? 'happy' : 'look';
+          cat.nextLook = 70 + ((Math.random() * 90) | 0);
+        }
+      }
+      function setMood(next) {
+        mood = next;
+        cat.face = null;
+        cat.faceTicks = 0;
+        cat.flick = null;
+        cat.tail = next === 'sleep' ? 'wrap' : next === 'happy' ? 'wagL' : 'curl';
+        floaters.length = 0;
+        if (next === 'happy')
+          floaters.push({ kind: 'heart', x: G.catX + 6, y: G.roofTop - 27, age: 0 });
+        draw();
+      }
+      const GLYPHS = {
+        z: ['###', '.#.', '#..', '###'],
+        Z: ['####', '..#.', '.#..', '#...', '####'],
+        heart: ['.#.#.', '#####', '.###.', '..#..'],
+      };
+      const sky = (x, y) => base[(y * G.w + x) * 4 + 3] === 0;
+      function draw() {
+        if (!G) return;
+        const out = image.data;
+        out.set(base);
+        const p = (x, y, color) => put(out, x, y, color);
+        for (const s of stars) {
+          const x = s.x % G.w,
+            y = s.y;
+          if (x < 0 || !sky(x, y)) continue;
+          p(x, y, s.boost ? C.glow : C.starDim);
+          if (s.boost) p(x, y, C.star);
+        }
+        for (const s of smoke) p(s.x, s.y, s.age < 12 ? C.smoke : C.smokeDim);
+        p(G.antenna, G.roofTop - 15, t % 20 < 2 ? C.windowBright : C.starDim);
+        G.lamps.forEach((lx, i) => {
+          const lit = !lampDim[i],
+            y = G.streetTop - 23;
+          if (lit) {
+            for (let dy = -3; dy <= 4; dy++)
+              for (let dx = -6; dx <= 7; dx++)
+                if ((dx + dy) % 2 === 0 && (dx * dx) / 2 + dy * dy < 22) {
+                  const x = lx + dx,
+                    yy = y + dy;
+                  if (x >= G.fx0 && sky(x, yy) === false && base[(yy * G.w + x) * 4] < 40)
+                    p(x, yy, C.glow);
+                }
+            for (let dx = -8; dx <= 9; dx++)
+              for (let row = 1; row < 6; row++)
+                if ((dx + row) % 2 === 0 && Math.abs(dx) < 9 - row)
+                  p(lx + dx, G.streetTop + row, C.pool);
+          }
+          for (let x = lx - 1; x <= lx + 2; x++) p(x, y, lit ? C.bulb : C.bulbDim);
+        });
+        const sitting = mood !== 'sleep';
+        const pose = sitting ? 'sit' : t % 24 < 12 ? 'loaf' : 'loafLow';
+        for (const [x, y, key] of PixelScene.catPixels(
+          pose,
+          mood === 'happy' ? 'perk' : sitting ? 'up' : 'rest',
+          sitting ? cat.flick : null,
+          sitting ? cat.tail : 'wrap',
+          sitting ? cat.face : null,
+        ))
+          p(G.catX + x, G.roofTop - 22 + y, C[key]);
+        for (const f of floaters) {
+          const color =
+            f.kind === 'heart'
+              ? f.age < 14
+                ? C.heart
+                : C.windowDim
+              : f.age < 18
+                ? C.glow
+                : C.star;
+          const glyph = GLYPHS[f.kind === 'z' ? (f.age < 10 ? 'z' : 'Z') : 'heart'];
+          glyph.forEach((row, dy) =>
+            [...row].forEach((c, dx) => {
+              if (c === '#') p(f.x + dx, f.y + dy, color);
+            }),
+          );
+        }
+        ctx.putImageData(image, 0, 0);
+      }
+
+      const press = (selector, active) =>
+        document
+          .querySelectorAll(selector)
+          .forEach((b) => b.setAttribute('aria-pressed', String(b === active)));
+      document.querySelectorAll('[data-count]').forEach((b) =>
+        b.addEventListener('click', () => {
+          count = Number(b.dataset.count);
+          expanded = false;
+          press('[data-count]', b);
+          renderDevices();
+        }),
+      );
+      document.querySelectorAll('[data-mood]').forEach((b) =>
+        b.addEventListener('click', () => {
+          press('[data-mood]', b);
+          setMood(b.dataset.mood);
+        }),
+      );
+      $('show-all').addEventListener('click', () => {
+        expanded = !expanded;
+        renderDevices();
+      });
+      addEventListener('resize', layout);
+      PixelIcons.render();
+      renderDevices();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+        setInterval(() => {
+          if (G && !document.hidden) tick();
+        }, 125);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name": "ym-android-probe",
+  "private": true,
+  "main": "main.cjs"
+}

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Android Files and Clipboard</title>
+    <style>
+      /* Prototype only: files and copied text between this computer and an Android device it controls. The frames are
+     the device's real window with the proposal added, a stand-in for the device's screen with Yes Machine's dialog in
+     the app's own styles, and the computer's clipboard card. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+      }
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #eef2f5;
+          color: #1d2730;
+        }
+        .frame {
+          border-color: #d7dee4 !important;
+        }
+        .controls button {
+          background: #fff !important;
+          border-color: #d7dee4 !important;
+        }
+        .bezel {
+          background: #fbfcfd !important;
+          box-shadow:
+            0 0 0 2px #9aa6b1,
+            0 18px 40px #1d273030 !important;
+        }
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      h2 {
+        margin: 14px 0 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+      }
+      .intro p,
+      .lead {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+      .frame {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+      }
+      .frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 0;
+        transform-origin: 0 0;
+      }
+      .bezel {
+        padding: clamp(10px, 2vw, 22px);
+        border-radius: clamp(18px, 3vw, 34px);
+        background: #1a2229;
+        box-shadow:
+          0 0 0 1px #2b3741,
+          0 18px 40px #0008;
+      }
+      .bezel .frame {
+        border: 0;
+        border-radius: 6px;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Files and Clipboard with Android</h1>
+        <p>
+          When this computer controls an Android device, files and copied text go both ways, as they
+          do with another computer. The device's window gets a Files button and takes files dropped
+          on it; on the device, any app's Share button sends a file back through Yes Machine; and
+          copy and paste just work.
+        </p>
+      </header>
+
+      <h2>The device's window on the computer</h2>
+      <p class="lead">
+        Try the states, or drag real files onto the frame: it shows where they go and pretends to
+        send them.
+      </p>
+      <div class="controls" data-for="window" data-key="files">
+        <button type="button" data-state="closed" aria-pressed="true">Files closed</button>
+        <button type="button" data-state="panel" aria-pressed="false">Files open</button>
+        <button type="button" data-state="drag" aria-pressed="false">Dragging a file</button>
+        <button type="button" data-state="sending" aria-pressed="false">Sending</button>
+        <button type="button" data-state="received" aria-pressed="false">
+          A file from the device
+        </button>
+      </div>
+      <div class="frame" data-width="1280" data-height="900">
+        <iframe
+          id="window"
+          title="The device's window"
+          allowfullscreen
+          src="android-files/window.html?state=connected"
+        ></iframe>
+      </div>
+
+      <h2>On the device</h2>
+      <p class="lead">
+        A photo shared from the gallery. Only the dialog is Yes Machine's; the rest stands in for
+        Android and the other app.
+      </p>
+      <div class="controls" data-for="tablet" data-key="tablet">
+        <button type="button" data-state="share" aria-pressed="true">Share sheet</button>
+        <button type="button" data-state="sending" aria-pressed="false">Sending</button>
+        <button type="button" data-state="sent" aria-pressed="false">Sent</button>
+        <button type="button" data-state="none" aria-pressed="false">No computer connected</button>
+        <button type="button" data-state="received" aria-pressed="false">
+          A file from the computer
+        </button>
+      </div>
+      <div class="bezel">
+        <div class="frame" data-width="1280" data-height="800">
+          <iframe
+            id="tablet"
+            title="The device's screen"
+            src="android-files/tablet.html?state=share"
+          ></iframe>
+        </div>
+      </div>
+
+      <h2>The computer's Settings</h2>
+      <p class="lead">
+        The clipboard card from the shared clipboard, with one sentence added: it covers the Android
+        devices this computer controls, with the same switch and the same three ways.
+      </p>
+      <div class="frame" data-width="1240" data-height="330">
+        <iframe id="settings" title="Settings" src="android-files/settings.html"></iframe>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>To the device:</b>
+          drop files anywhere on the window, or choose them under
+          <b>Files</b>
+          , which is also in the small bar in full screen. They go one after another into the
+          device's Download folder, up to 10 GB each; a name that's already there gets a number, as
+          Android does.
+        </li>
+        <li>
+          <b>From the device:</b>
+          in any app, Share, then Yes Machine. It goes to the connected computer, which asks where
+          to save it, as with files from a viewer. The same works while the tablet is viewing a
+          computer: the file goes to that computer. If no computer is connected, Yes Machine says
+          so.
+        </li>
+        <li>
+          <b>The clipboard:</b>
+          text copied on either side is ready to paste on the other, up to 60 KB, as the computer's
+          <b>Share the clipboard</b>
+          card allows. Nothing shows in the window.
+        </li>
+        <li>
+          <b>Advanced mode</b>
+          carries all of it over the cable or wireless debugging, like the picture.
+          <b>General mode</b>
+          carries it over the app's own connection.
+        </li>
+        <li>
+          <b>One open question in general mode:</b>
+          Android lets only the app in front read the clipboard, so text copied on the device may
+          need a workaround to reach the computer; it has to be tried. Text from the computer always
+          reaches the device, and advanced mode reads the device's clipboard already.
+        </li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const frames = [...document.querySelectorAll('.frame')];
+      function scale() {
+        for (const frame of frames) {
+          const width = +frame.dataset.width,
+            height = +frame.dataset.height,
+            s = frame.clientWidth / width,
+            iframe = frame.querySelector('iframe');
+          frame.style.height = `${Math.round(height * s)}px`;
+          Object.assign(iframe.style, {
+            width: `${width}px`,
+            height: `${height}px`,
+            transform: `scale(${s})`,
+          });
+        }
+      }
+      new ResizeObserver(scale).observe(document.querySelector('.page'));
+      for (const controls of document.querySelectorAll('.controls'))
+        controls.addEventListener('click', (event) => {
+          const button = event.target.closest('button');
+          if (!button) return;
+          for (const each of controls.querySelectorAll('button'))
+            each.setAttribute('aria-pressed', String(each === button));
+          document
+            .getElementById(controls.dataset.for)
+            .contentWindow.postMessage({ [controls.dataset.key]: button.dataset.state }, '*');
+        });
+    </script>
+  </body>
+</html>

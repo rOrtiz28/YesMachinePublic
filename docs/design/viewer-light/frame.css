@@ -1,0 +1,221 @@
+/* Preview only: the fonts from their files, and pictures that stand in for the remote desktop and the tablet. */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url(../../../public/fonts/pixelify-sans-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+html,
+body {
+  height: 100%;
+}
+.session {
+  height: 100%;
+}
+
+.fake-desktop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, #2f5f9e 0%, #6b5aa8 52%, #d98a72 100%);
+  font:
+    500 11px/1 -apple-system,
+    system-ui,
+    sans-serif;
+  color: #1c1c1e;
+}
+.fake-desktop .menubar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 22px;
+  padding: 0 12px;
+  background: #ffffff8c;
+  backdrop-filter: blur(8px);
+}
+.fake-desktop .menubar b {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #1c1c1e;
+}
+.fake-desktop .menubar i {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+  background: #1c1c1e55;
+}
+.fake-desktop .menubar span {
+  margin-left: auto;
+}
+.fake-desktop .win {
+  position: absolute;
+  left: 9%;
+  top: 15%;
+  width: 54%;
+  height: 60%;
+  border-radius: 10px;
+  background: #fbfbfd;
+  box-shadow: 0 14px 40px #0006;
+  overflow: hidden;
+}
+.fake-desktop .win.small {
+  left: 58%;
+  top: 30%;
+  width: 34%;
+  height: 44%;
+}
+.fake-desktop .win-bar {
+  display: flex;
+  gap: 6px;
+  padding: 9px 10px;
+  background: #ececf0;
+}
+.fake-desktop .win-bar i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+.fake-desktop .win-bar i:nth-child(2) {
+  background: #febc2e;
+}
+.fake-desktop .win-bar i:nth-child(3) {
+  background: #28c840;
+}
+.fake-desktop .win-body {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.fake-desktop .win-body p {
+  height: 8px;
+  border-radius: 4px;
+  background: #d9dbe1;
+}
+.fake-desktop .win-body p.short {
+  width: 60%;
+}
+.fake-desktop .win.small .win-body {
+  grid-template-columns: 1fr 1fr;
+}
+.fake-desktop .tile {
+  height: 52px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #8ec5ff, #b39ddb);
+}
+.fake-desktop .dock {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  display: flex;
+  gap: 8px;
+  padding: 7px 9px;
+  translate: -50% 0;
+  border-radius: 14px;
+  background: #ffffff66;
+  backdrop-filter: blur(8px);
+}
+.fake-desktop .dock i {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #ffffff, #9fb7d6);
+}
+.fake-desktop .dock i:nth-child(2) {
+  background: linear-gradient(135deg, #7fe0a0, #2e9e5b);
+}
+.fake-desktop .dock i:nth-child(3) {
+  background: linear-gradient(135deg, #ffd27a, #f08a3c);
+}
+.fake-desktop .dock i:nth-child(4) {
+  background: linear-gradient(135deg, #8fc4ff, #3a6fd8);
+}
+.fake-desktop .dock i:nth-child(5) {
+  background: linear-gradient(135deg, #ff9fb0, #d9465f);
+}
+
+.android .fake-tablet {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(200deg, #1d3557 0%, #457b9d 45%, #a8dadc 100%);
+  font:
+    500 12px/1 system-ui,
+    sans-serif;
+  color: #fff;
+  cursor: default;
+}
+.fake-tablet .status {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 11px;
+}
+.fake-tablet .clock {
+  margin: 9% 0 0 7%;
+  font:
+    300 64px/1 system-ui,
+    sans-serif;
+}
+.fake-tablet .clock small {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 400;
+}
+.fake-tablet .apps {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  display: grid;
+  grid-template-columns: repeat(5, 44px);
+  gap: 22px 34px;
+  translate: -50% 0;
+}
+.fake-tablet .apps i {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffffff, #cfd8e3);
+}
+.fake-tablet .apps i:nth-child(3n + 2) {
+  background: linear-gradient(135deg, #7fe0a0, #2e9e5b);
+}
+.fake-tablet .apps i:nth-child(4n + 3) {
+  background: linear-gradient(135deg, #ffd27a, #f08a3c);
+}
+.fake-tablet .apps i:nth-child(5n + 1) {
+  background: linear-gradient(135deg, #8fc4ff, #3a6fd8);
+}
+.fake-tablet .navbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  display: flex;
+  justify-content: center;
+}
+.fake-tablet .navbar b {
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffffcc;
+}

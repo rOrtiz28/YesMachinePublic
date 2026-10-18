@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tablet</title>
+    <link rel="stylesheet" href="../../../src/windows/host/host.css" />
+    <link rel="stylesheet" href="../../../android/app/src/main/home/home.css" />
+    <link rel="stylesheet" href="tablet.css" />
+    <script src="../../../public/pixel-icons.js" defer></script>
+    <script src="tablet.js" defer></script>
+  </head>
+  <body class="tablet">
+    <!-- Stand-ins for Android and another app: the status bar, a photo gallery, the share sheet and a notification. -->
+    <div class="android-status" aria-hidden="true">
+      <span>10:42</span>
+      <span>Wi-Fi · 86%</span>
+    </div>
+    <div class="gallery" aria-hidden="true">
+      <header>
+        <strong>Gallery</strong>
+        <nav>
+          <span class="on">Pictures</span>
+          <span>Albums</span>
+          <span>Stories</span>
+        </nav>
+      </header>
+      <p class="day">Today</p>
+      <div id="photos" class="photos"></div>
+    </div>
+
+    <div id="share" class="share-sheet" hidden>
+      <div class="grip" aria-hidden="true"></div>
+      <div class="share-head">
+        <i class="thumb" aria-hidden="true"></i>
+        <div>
+          <strong>IMG_2041.jpg</strong>
+          <small>2.8 MB</small>
+        </div>
+      </div>
+      <div class="share-apps">
+        <span class="share-app">
+          <i class="c1"></i>
+          Messages
+        </span>
+        <span class="share-app">
+          <i class="c2"></i>
+          Gmail
+        </span>
+        <span class="share-app">
+          <i class="c3"></i>
+          Drive
+        </span>
+        <span class="share-app chosen">
+          <i class="ym"><b>ym</b></i>
+          Yes Machine
+        </span>
+        <span class="share-app">
+          <i class="c4"></i>
+          Notes
+        </span>
+        <span class="share-app">
+          <i class="c5"></i>
+          Bluetooth
+        </span>
+      </div>
+    </div>
+
+    <!-- Yes Machine's part: a dialog over the app the file came from, in the app's own look. -->
+    <dialog id="send-dialog" class="allow-dialog send-dialog" aria-labelledby="send-title">
+      <div class="dialog-body">
+        <h2 id="send-title">Sending to Alejandro’s MacBook Pro</h2>
+        <div class="who">
+          <span class="icon" data-icon="file"></span>
+          <div>
+            <strong>IMG_2041.jpg</strong>
+            <small>2.8 MB</small>
+          </div>
+        </div>
+        <div id="send-progress" class="send-progress">
+          <progress max="100" value="45" aria-label="Sending"></progress>
+          <span class="hint">Sending · 45%</span>
+        </div>
+        <p id="send-text"></p>
+        <div class="dialog-actions" id="send-actions"></div>
+      </div>
+    </dialog>
+
+    <div id="heads-up" class="heads-up" hidden>
+      <div class="heads-up-app">
+        <i class="ym small"><b>ym</b></i>
+        <span>Yes Machine · now</span>
+      </div>
+      <strong>report.pdf from Alejandro’s MacBook Pro</strong>
+      <span>Saved in Download.</span>
+      <div class="heads-up-actions">
+        <span>Open</span>
+        <span>Show in Files</span>
+      </div>
+    </div>
+    <div class="android-nav" aria-hidden="true"><b></b></div>
+  </body>
+</html>

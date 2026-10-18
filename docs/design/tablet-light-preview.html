@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>The Tablet by Day</title>
+    <style>
+      /* Prototype only: the Android app inside a stand-in tablet, with Android's status bar on top and its taskbar below,
+     by night and by day. The app is its real page (design/tablet-light/) with the proposed changes and a stand-in for
+     the Java bridge; the viewer is the approved viewer prototype. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+        transition:
+          background-color 0.4s,
+          color 0.4s;
+      }
+      body.day {
+        background: #eef2f5;
+        color: #1d2730;
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        margin-top: 16px;
+      }
+      .group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .group span {
+        align-self: center;
+        margin-right: 4px;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      body.day .controls button {
+        background: #fff;
+        border-color: #d7dee4;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+
+      /* The tablet: a black bezel, then Android's bars around the app, which take the app's night or day colors. */
+      .stage {
+        position: relative;
+      }
+      .device {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        padding: 18px;
+        border-radius: 34px;
+        background: #16191c;
+        box-shadow:
+          0 0 0 2px #2a2f34,
+          0 24px 60px #0008;
+        transform-origin: top center;
+      }
+      .screen {
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: #0d1115;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        background: #0d1115;
+        color: #e6ede8;
+        font:
+          600 13px/1 system-ui,
+          sans-serif;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
+      }
+      .day-bars .bar {
+        background: #eef2f5;
+        color: #1d2730;
+      }
+      .status {
+        height: 30px;
+      }
+      .status .left {
+        display: flex;
+        gap: 10px;
+      }
+      .status .right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .status .battery {
+        display: inline-block;
+        width: 22px;
+        height: 11px;
+        border: 2px solid currentColor;
+        border-radius: 3px;
+        position: relative;
+      }
+      .status .battery::after {
+        content: '';
+        position: absolute;
+        inset: 1px 5px 1px 1px;
+        background: currentColor;
+      }
+      .taskbar {
+        height: 48px;
+        justify-content: center;
+        gap: 14px;
+      }
+      .taskbar i {
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: linear-gradient(135deg, #ffd27a, #f08a3c);
+      }
+      .taskbar i:nth-child(2) {
+        background: linear-gradient(135deg, #ff8a8a, #d9465f);
+      }
+      .taskbar i:nth-child(3) {
+        background: linear-gradient(135deg, #8fc4ff, #3a6fd8);
+      }
+      .taskbar i.ym {
+        background: #8feba7;
+        position: relative;
+      }
+      .taskbar i.ym::after {
+        content: 'ym';
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #0f2416;
+        font:
+          700 13px/1 'Pixelify Sans',
+          monospace;
+      }
+      .taskbar .sep {
+        width: 1px;
+        height: 22px;
+        background: currentColor;
+        opacity: 0.3;
+      }
+      .taskbar .nav {
+        position: absolute;
+        right: 28px;
+        display: flex;
+        gap: 40px;
+        font:
+          400 20px/1 system-ui,
+          sans-serif;
+      }
+      .phone .taskbar {
+        height: 24px;
+      }
+      .phone .taskbar > :not(.handle) {
+        display: none;
+      }
+      .taskbar .handle {
+        display: none;
+        width: 110px;
+        height: 4px;
+        border-radius: 2px;
+        background: currentColor;
+        opacity: 0.8;
+      }
+      .phone .taskbar .handle {
+        display: block;
+      }
+      .app {
+        position: relative;
+        display: block;
+        border: 0;
+        background: #0d1115;
+      }
+      .day-bars .app {
+        background: #eef2f5;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>The Tablet by Day</h1>
+        <p>
+          The Yes Machine app on Alejandro’s Tab A11+, at its real size. Press the sun beside Wi-Fi,
+          at the top right of the app, as on the computer: Sarigüeya walks down to her house by day,
+          and Android’s bars change with the app. Tap a computer to see signing in, and Connect to
+          see the viewer.
+        </p>
+        <div class="controls">
+          <div class="group" role="group" aria-label="Screen">
+            <span>Screen</span>
+            <button type="button" data-screen="tablet" aria-pressed="true">Tablet</button>
+            <button type="button" data-screen="upright" aria-pressed="false">Upright</button>
+            <button type="button" data-screen="phone" aria-pressed="false">Phone</button>
+          </div>
+          <div class="group" role="group" aria-label="Computers">
+            <span>Computers</span>
+            <button type="button" data-online="true" aria-pressed="true">Online</button>
+            <button type="button" data-online="false" aria-pressed="false">None</button>
+          </div>
+          <div class="group" role="group" aria-label="This device">
+            <span>This device</span>
+            <button type="button" data-sharing="off" aria-pressed="true">Not sharing</button>
+            <button type="button" data-sharing="waiting" aria-pressed="false">Sharing</button>
+            <button type="button" data-sharing="connected" aria-pressed="false">
+              A computer in control
+            </button>
+          </div>
+          <div class="group" role="group" aria-label="Page">
+            <span>Page</span>
+            <button type="button" data-view="home" aria-pressed="true">Home</button>
+            <button type="button" data-view="settings" aria-pressed="false">Settings</button>
+            <button type="button" data-view="cat" aria-pressed="false">Rooftop cat</button>
+            <button type="button" data-view="viewer" aria-pressed="false">Viewer</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="stage" id="stage">
+        <div class="device" id="device">
+          <div class="screen" id="screen">
+            <div class="bar status">
+              <span class="left">
+                <span>7:05</span>
+                <span>Tue, Oct 13</span>
+              </span>
+              <span class="right">
+                <span>Wi-Fi</span>
+                <span class="battery" aria-hidden="true"></span>
+                <span>86%</span>
+              </span>
+            </div>
+            <iframe class="app" id="app" title="Yes Machine app"></iframe>
+            <div class="bar taskbar">
+              <i></i>
+              <i></i>
+              <i></i>
+              <span class="sep"></span>
+              <i class="ym"></i>
+              <span class="handle"></span>
+              <span class="nav">
+                <span>|||</span>
+                <span>○</span>
+                <span>‹</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>The same switch as on the computer:</b>
+          the sun beside the Wi-Fi pill turns the app to day, and the moon back. On the home screen
+          Sarigüeya climbs down from the night roof to the porch of her house by day while the light
+          crosses it, as on the computer; on another page the mode just changes. The app remembers
+          it.
+        </li>
+        <li>
+          <b>The page scrolls to the house first.</b>
+          On the tablet the house sits below the This device card, so most of her walk would happen
+          out of view; when part of the house is hidden, pressing the sun scrolls it into view and
+          then she sets off. The computer has the same problem and could get the same.
+        </li>
+        <li>
+          <b>Android’s bars change with the app:</b>
+          the status bar on top and the taskbar below turn light with dark icons by day, at the same
+          moment the app’s colors do, and the app opens in the last mode chosen.
+        </li>
+        <li>
+          <b>The house follows this device:</b>
+          by day the garage door and the front gates open while this device shares its screen
+          (general mode). Sarigüeya sits up while a computer is ready to connect, as she does now at
+          night, and wags her tail while a computer is in control.
+        </li>
+        <li>
+          <b>The house’s bottom gets taller</b>
+          , as on the computer, so the day house’s fence, sidewalk and road fit; by night too, so
+          nothing jumps when the mode changes.
+        </li>
+        <li>
+          <b>Settings, dialogs and the This device card</b>
+          take the computer’s day colors. The rooftop cat page keeps her night picture, as on the
+          computer.
+        </li>
+        <li>
+          <b>On a phone</b>
+          the house is narrow: the porch and Sarigüeya fit, and the garage shows only at the right
+          edge.
+        </li>
+        <li>
+          <b>The viewer</b>
+          opens in the app’s mode: the white monitor and cream Sarigüeya by day, as in the
+          computer’s viewer. Full screen stays black.
+        </li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const SCREENS = {
+        tablet: [1280, 722, false],
+        upright: [800, 1202, false],
+        phone: [412, 859, true],
+      };
+      const state = { screen: 'tablet', online: 'true', sharing: 'off', view: 'home' };
+      let theme = 'night';
+      const app = document.getElementById('app'),
+        device = document.getElementById('device'),
+        screen = document.getElementById('screen');
+      function frameSource() {
+        if (state.view === 'viewer')
+          return `viewer-light/computer.html?theme=${theme}&state=connected&panel=none&frames=light`;
+        return `tablet-light/home.html?online=${state.online}&sharing=${state.sharing}`;
+      }
+      function size() {
+        const [width, height, phone] = SCREENS[state.screen];
+        app.style.width = `${width}px`;
+        app.style.height = `${height}px`;
+        screen.classList.toggle('phone', phone);
+        const available = document.querySelector('.page').clientWidth,
+          full = width + 36;
+        const scale = Math.min(1, available / full);
+        device.style.transform = `translateX(-50%) scale(${scale})`;
+        document.getElementById('stage').style.height =
+          `${(height + (phone ? 56 : 78) + 36) * scale}px`;
+      }
+      function load() {
+        app.src = frameSource();
+      }
+      function pressed() {
+        for (const button of document.querySelectorAll('.controls button')) {
+          const [key, value] = Object.entries(button.dataset)[0];
+          button.setAttribute('aria-pressed', String(state[key] === value));
+        }
+      }
+      function setTheme(mode) {
+        theme = mode;
+        screen.classList.toggle('day-bars', mode === 'day');
+        document.body.classList.toggle('day', mode === 'day');
+      }
+      document.querySelector('.controls').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const [key, value] = Object.entries(button.dataset)[0];
+        const before = state.view;
+        state[key] = value;
+        pressed();
+        if (key === 'screen') size();
+        if (key === 'view' && (value === 'viewer' || before === 'viewer')) {
+          load();
+          return;
+        }
+        if (key === 'online') app.contentWindow?.postMessage({ online: value === 'true' }, '*');
+        if (key === 'sharing') app.contentWindow?.postMessage({ sharing: value }, '*');
+        if (key === 'view') app.contentWindow?.postMessage({ view: value }, '*');
+      });
+      // The app's page says when its colors change (Java will color the bars then), and when signing in opens the viewer.
+      addEventListener('message', ({ data }) => {
+        if (data?.theme) setTheme(data.theme);
+        if (data?.viewer) {
+          state.view = 'viewer';
+          pressed();
+          load();
+        }
+      });
+      new ResizeObserver(size).observe(document.querySelector('.page'));
+      size();
+      pressed();
+      load();
+    </script>
+  </body>
+</html>

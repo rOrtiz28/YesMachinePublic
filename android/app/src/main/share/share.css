@@ -1,0 +1,54 @@
+/* The dialog for Share, then Yes Machine, which Android shows over the app the files come from:
+   android/app/src/main/share/share.html, run by share.js, while ShareActivity sends the files. The page loads the
+   desktop app's host.css and the home screen's home.css first, so the dialog looks like the app's own. The page
+   itself is see-through, so the other app shows around the dialog. */
+html,
+body.share {
+  background: transparent;
+}
+/* The dialog opens with its open attribute, not as a modal, so it has no ::backdrop; this layer dims the other app
+   instead, more lightly by day. */
+.share .scrim {
+  position: fixed;
+  inset: 0;
+  background: #05080aa6;
+}
+:root[data-theme='light'] .share .scrim {
+  background: #1d27305c;
+}
+/* A dialog that is not modal sits at the top of the page; this centers it on the screen. */
+.share dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+}
+/* The file being sent, in the allow dialog's look (home.css): its icon, name and size. Long names break anywhere
+   rather than widen the dialog. */
+.share .who .icon svg {
+  width: 26px;
+  height: 26px;
+}
+.share .who small {
+  overflow-wrap: anywhere;
+}
+.share .who strong {
+  overflow-wrap: anywhere;
+}
+/* The progress bar and its text, while a file is being prepared or sent. */
+.send-progress {
+  display: grid;
+  gap: 8px;
+}
+.send-progress[hidden],
+.share .who[hidden] {
+  display: none;
+}
+.send-progress progress {
+  width: 100%;
+  accent-color: var(--mint);
+}
+/* The message line is empty while a file is going, and then takes no room. */
+.share p:empty {
+  display: none;
+}

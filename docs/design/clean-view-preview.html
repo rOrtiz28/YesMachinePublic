@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hide the Bars</title>
+    <style>
+      /* Prototype only: the Android window and the computer viewer with a button that hides their bars, so the screen
+     fills the window, while Full screen keeps taking the whole monitor. Each frame is the real page at its size. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+      }
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #eef2f5;
+          color: #1d2730;
+        }
+        .frame {
+          border-color: #d7dee4 !important;
+        }
+        .controls button {
+          background: #fff !important;
+          border-color: #d7dee4 !important;
+        }
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      h2 {
+        margin: 14px 0 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+      }
+      .intro p,
+      .lead {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+      .frame {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+      }
+      .frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 0;
+        transform-origin: 0 0;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Hide the Bars</h1>
+        <p>
+          A new button beside the on-screen keyboard switch hides the window's bars, with the
+          device's name and the help line, so the device's screen fills the window up to its edges.
+          Full screen still takes the whole monitor. Try both in the frames: they are the real
+          windows, scaled down.
+        </p>
+      </header>
+
+      <h2>The Android device's window</h2>
+      <div class="controls" data-for="android">
+        <button type="button" data-bars="false" aria-pressed="true">Bars shown</button>
+        <button type="button" data-bars="true" aria-pressed="false">Bars hidden</button>
+      </div>
+      <div class="frame" data-width="1280" data-height="900">
+        <iframe
+          id="android"
+          title="Android viewer"
+          allowfullscreen
+          src="clean-view/android.html?state=connected"
+        ></iframe>
+      </div>
+
+      <h2>Another computer's window</h2>
+      <p class="lead">The same button, beside Full screen, so both windows work alike.</p>
+      <div class="controls" data-for="computer">
+        <button type="button" data-bars="false" aria-pressed="true">Bars shown</button>
+        <button type="button" data-bars="true" aria-pressed="false">Bars hidden</button>
+      </div>
+      <div class="frame" data-width="1280" data-height="820">
+        <iframe
+          id="computer"
+          title="Computer viewer"
+          allowfullscreen
+          src="clean-view/computer.html?state=connected&amp;panel=none"
+        ></iframe>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>Hide bars</b>
+          (the arrow pointing up, beside the keyboard switch) hides the top bar and the line at the
+          bottom: the name and connection, the buttons, and the help and frame rate. The screen
+          fills the window edge to edge, without the device's frame; what's left over is black, as
+          in full screen.
+        </li>
+        <li>
+          <b>A small bar stays at the top</b>
+          , as in full screen today, and fades after three seconds until the pointer comes near it:
+          the keyboard switch,
+          <b>Show bars</b>
+          (the arrow pointing down) to bring everything back, sound, screenshot, and
+          <b>Full screen</b>
+          .
+        </li>
+        <li>
+          <b>Full screen</b>
+          takes the whole monitor, from the main bar or the small one, and its button in the small
+          bar then says
+          <b>Exit full screen</b>
+          . Leaving full screen goes back to where you were: the window without bars, or with them.
+        </li>
+        <li>
+          <b>The computer viewer</b>
+          gets the same button, beside Full screen, so both windows work the same way; in a browser
+          and in the tablet's app, Hide bars fills the page.
+        </li>
+        <li>Each window opens with its bars; it doesn't remember that they were hidden.</li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const frames = [...document.querySelectorAll('.frame')];
+      function scale() {
+        for (const frame of frames) {
+          const width = +frame.dataset.width,
+            height = +frame.dataset.height,
+            s = frame.clientWidth / width,
+            iframe = frame.querySelector('iframe');
+          frame.style.height = `${Math.round(height * s)}px`;
+          Object.assign(iframe.style, {
+            width: `${width}px`,
+            height: `${height}px`,
+            transform: `scale(${s})`,
+          });
+        }
+      }
+      new ResizeObserver(scale).observe(document.querySelector('.page'));
+      for (const controls of document.querySelectorAll('.controls'))
+        controls.addEventListener('click', (event) => {
+          const button = event.target.closest('button');
+          if (button)
+            document
+              .getElementById(controls.dataset.for)
+              .contentWindow.postMessage({ hideBars: button.dataset.bars === 'true' }, '*');
+        });
+      // The frames say when their bars change, so the buttons above them follow.
+      addEventListener('message', ({ source, data }) => {
+        if (!data || !('clean' in data)) return;
+        const frame = [...document.querySelectorAll('iframe')].find(
+          (each) => each.contentWindow === source,
+        );
+        for (const button of document.querySelectorAll(`.controls[data-for="${frame?.id}"] button`))
+          button.setAttribute('aria-pressed', String(String(data.clean) === button.dataset.bars));
+      });
+    </script>
+  </body>
+</html>

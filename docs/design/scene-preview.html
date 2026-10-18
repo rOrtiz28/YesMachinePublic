@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Yes Machine Pixel Scene</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Pixelify+Sans:wght@500;700&display=swap"
+    />
+    <style>
+      /* Layout: one column. A stage that copies the app's bottom-right corner, with the scene pinned to its bottom edge, then the controls. */
+      :root {
+        color-scheme: dark;
+        --bg: #0d1115;
+        --panel: #12191e;
+        --line: #1f2a31;
+        --text: #e6ede8;
+        --muted: #7f8d98;
+        --mint: #8feba7;
+        --mint-ink: #0f2416;
+        --display: 'Pixelify Sans', 'Silkscreen', ui-monospace, monospace;
+        --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 400 14px/1.6 var(--mono);
+      }
+      .page {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding-inline: max(16px, 4vw);
+        padding-block: 40px 64px;
+        display: grid;
+        gap: 28px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        background: var(--mint);
+        color: var(--mint-ink);
+        font: 700 17px/1 var(--display);
+        letter-spacing: -1px;
+      }
+      .eyebrow,
+      .label {
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 18px 0 10px;
+        font: 700 clamp(30px, 5vw, 44px)/1.05 var(--display);
+        letter-spacing: -0.5px;
+        text-wrap: balance;
+      }
+      h1 span {
+        color: var(--mint);
+      }
+      .intro p {
+        margin: 0;
+        max-width: 62ch;
+        color: var(--muted);
+      }
+
+      .stage {
+        position: relative;
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        overflow: hidden;
+        padding-top: 56px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .stage canvas {
+        flex: none;
+        display: block;
+      }
+      .devices {
+        position: absolute;
+        left: 22px;
+        bottom: 22px;
+        display: flex;
+        gap: 10px;
+      }
+      .device {
+        display: grid;
+        gap: 2px;
+        min-width: 132px;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        font-size: 12px;
+      }
+      .device.current {
+        border-color: var(--mint);
+      }
+      .device small {
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .device b {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .device b::after {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: var(--muted);
+      }
+      .device.current b::after {
+        background: var(--mint);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 20px 28px;
+      }
+      .group {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+      }
+      .segmented {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--muted);
+      }
+      button:focus-visible {
+        outline: 2px solid var(--mint);
+        outline-offset: 2px;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button[aria-pressed='true'] {
+        background: var(--mint);
+        border-color: var(--mint);
+        color: var(--mint-ink);
+      }
+      .segmented button {
+        display: grid;
+        text-align: left;
+        gap: 1px;
+      }
+      .segmented button span {
+        font-size: 11px;
+        opacity: 0.75;
+      }
+      .segmented.small button {
+        min-width: 48px;
+        text-align: center;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .notes h2 {
+        margin: 0 0 12px;
+        font: 700 18px/1.2 var(--display);
+      }
+      .notes ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 10px;
+        max-width: 72ch;
+      }
+      .notes li {
+        padding-left: 18px;
+        position: relative;
+        color: var(--muted);
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+      }
+      .notes b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 1000px) {
+        .devices {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">ym</span>
+          <span class="eyebrow">Yes Machine · Pixel scene</span>
+        </div>
+        <h1>
+          The rooftop
+          <span>cat</span>
+          .
+        </h1>
+        <p>
+          Background art for the home screen. The cat follows the host's state: asleep when the
+          computer isn't sharing, awake while it shares, and happy when a viewer connects.
+        </p>
+      </header>
+
+      <section class="stage" aria-label="Scene preview">
+        <div class="devices" aria-hidden="true">
+          <div class="device current">
+            <b>Alejandros-MacBook</b>
+            <small>This device</small>
+          </div>
+          <div class="device">
+            <b>Office-PC</b>
+            <small>Example</small>
+          </div>
+        </div>
+        <canvas
+          id="scene"
+          role="img"
+          aria-label="Pixel-art night city with a cat sitting on a rooftop ledge"
+        ></canvas>
+      </section>
+
+      <section class="controls" aria-label="Scene controls">
+        <div class="group" role="group" aria-labelledby="mood-label">
+          <span id="mood-label" class="label">Host state</span>
+          <div class="segmented">
+            <button type="button" id="mood-sleep" data-mood="sleep" aria-pressed="false">
+              <strong>Not sharing</strong>
+              <span>cat asleep</span>
+            </button>
+            <button type="button" id="mood-awake" data-mood="awake" aria-pressed="true">
+              <strong>Sharing</strong>
+              <span>cat awake</span>
+            </button>
+            <button type="button" id="mood-happy" data-mood="happy" aria-pressed="false">
+              <strong>Viewer connected</strong>
+              <span>cat happy</span>
+            </button>
+          </div>
+        </div>
+        <div class="group" role="group" aria-labelledby="scale-label">
+          <span id="scale-label" class="label">Pixel size</span>
+          <div class="segmented small">
+            <button type="button" id="scale-2" data-scale="2" aria-pressed="false">2×</button>
+            <button type="button" id="scale-3" data-scale="3" aria-pressed="true">3×</button>
+            <button type="button" id="scale-4" data-scale="4" aria-pressed="false">4×</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" id="look">Turn around</button>
+          <button type="button" id="pause" aria-pressed="false">Pause</button>
+        </div>
+      </section>
+      <p id="motion-note" class="note" hidden>
+        Reduced motion is on in your system settings, so the scene stays still.
+      </p>
+
+      <section class="notes">
+        <h2>What moves</h2>
+        <ul>
+          <li>
+            <b>The cat.</b>
+            Its tail sways and its ears twitch. Every 10 to 25 seconds it turns around to look at
+            you and blinks.
+          </li>
+          <li>
+            <b>The city.</b>
+            Windows switch on and off. The building with ears blinks its two top windows, and the
+            antenna light pulses.
+          </li>
+          <li>
+            <b>The sky.</b>
+            Stars twinkle, and a shooting star crosses about once a minute or two.
+          </li>
+          <li>
+            <b>Sharp pixels.</b>
+            The art is drawn in code at 200 × 76 pixels and scaled by whole numbers, so it never
+            blurs. It pauses when the window is hidden.
+          </li>
+        </ul>
+      </section>
+    </main>
+    <script src="../../public/pixel-scene.js"></script>
+    <script>
+      const view = PixelScene.mount(document.getElementById('scene'), {
+        scale: innerWidth < 700 ? 2 : 3,
+        mood: 'awake',
+      });
+      const press = (selector, active) =>
+        document
+          .querySelectorAll(selector)
+          .forEach((button) => button.setAttribute('aria-pressed', String(button === active)));
+      if (innerWidth < 700) press('[data-scale]', document.getElementById('scale-2'));
+      document.querySelectorAll('[data-mood]').forEach((button) =>
+        button.addEventListener('click', () => {
+          view.setMood(button.dataset.mood);
+          press('[data-mood]', button);
+          document.getElementById('look').disabled = button.dataset.mood === 'sleep';
+        }),
+      );
+      document.querySelectorAll('[data-scale]').forEach((button) =>
+        button.addEventListener('click', () => {
+          view.setScale(Number(button.dataset.scale));
+          press('[data-scale]', button);
+        }),
+      );
+      document.getElementById('look').addEventListener('click', () => view.look());
+      const pause = document.getElementById('pause');
+      pause.addEventListener('click', () => {
+        const paused = pause.getAttribute('aria-pressed') !== 'true';
+        if (paused) view.pause();
+        else view.resume();
+        pause.setAttribute('aria-pressed', String(paused));
+        pause.textContent = paused ? 'Play' : 'Pause';
+      });
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      const showMotionNote = () => {
+        document.getElementById('motion-note').hidden = !motion.matches;
+      };
+      motion.addEventListener('change', showMotionNote);
+      showMotionNote();
+    </script>
+  </body>
+</html>

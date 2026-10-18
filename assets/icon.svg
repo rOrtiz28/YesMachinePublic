@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Yes Machine</title>
+  <desc>The ym launcher mark, converted from the Android vector.</desc>
+  <g transform="translate(0 0) rotate(0) scale(1 1) translate(-0 -0)">
+    <path fill="#8feba7" d="M277,82H747A195,195 0 0 1 942,277V747A195,195 0 0 1 747,942H277A195,195 0 0 1 82,747V277A195,195 0 0 1 277,82Z" />
+    <path fill="#0f2416" d="M492,344h156v44h-156zM676,344h112v44h-112zM492,388h340v28h-340zM192,344h68v132h-68zM376,344h64v132h-64zM192,476h248v28h-248zM240,504h200v44h-200zM768,416h64v176h-64zM492,416h64v176h-64zM628,416h68v176h-68zM376,548h64v60h-64zM192,564h68v44h-68zM192,608h248v28h-248zM240,636h156v44h-156z" />
+  </g>
+</svg>

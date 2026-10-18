@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Yes Machine Viewer</title>
+    <link rel="stylesheet" href="../../src/windows/host/host.css" />
+    <style>
+      /* Layout: a viewer window at its default size inside a frame. A thin tool bar on top, the remote desktop
+     inside a pixel monitor with the cat napping on its top edge, an optional tool drawer on the right, and
+     a one-line status strip. Colors and type come from the app's host.css tokens. */
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding-inline: max(16px, 3vw);
+        padding-block: 32px 64px;
+        display: grid;
+        gap: 22px;
+      }
+      .intro h1 {
+        font-size: clamp(30px, 4vw, 44px);
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 72ch;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--raised);
+        font-size: 13px;
+      }
+      .controls button[aria-pressed='true'] {
+        background: var(--mint);
+        border-color: var(--mint);
+        color: var(--mint-ink);
+      }
+      .frame {
+        overflow-x: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 14px;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 76ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--muted);
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+      }
+      .notes b {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* The viewer window. */
+      .viewer {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 56px minmax(0, 1fr) 30px;
+        width: 1240px;
+        height: 780px;
+        background: var(--bg);
+        overflow: hidden;
+      }
+      .vbar {
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 0 16px 0 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .vbody {
+        grid-row: 2;
+      }
+      .vstrip {
+        grid-row: 3;
+      }
+      .vbrand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-right: auto;
+      }
+      .vbrand .logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        font-size: 17px;
+      }
+      .vbrand strong {
+        display: block;
+        font-size: 14px;
+      }
+      .vstatus {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .vstatus i {
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+      }
+      .connecting-state .vstatus i {
+        background: var(--warn);
+      }
+      .vtools {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tool {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 11px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: none;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .tool:hover {
+        color: var(--text);
+        background: var(--raised);
+      }
+      .tool[aria-pressed='true'] {
+        color: var(--mint);
+        background: var(--mint-tint);
+        border-color: var(--mint-line);
+      }
+      .tool .icon svg {
+        width: 24px;
+        height: 24px;
+      }
+      .sep {
+        width: 1px;
+        height: 24px;
+        margin: 0 6px;
+        background: var(--line-strong);
+      }
+      .vtools .ghost {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      .vbody {
+        display: flex;
+        min-height: 0;
+      }
+      .vstage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        min-width: 0;
+        overflow: hidden;
+        padding: 72px 48px 22px;
+      }
+      .monitor {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        padding: 12px 12px 0;
+        border-radius: 6px;
+        background: #1a2228;
+        box-shadow:
+          0 0 0 2px #0a0f12,
+          inset 0 0 0 2px #2b353c,
+          0 18px 40px #0007;
+      }
+      .screen {
+        position: relative;
+        overflow: hidden;
+        background: #05080a;
+        box-shadow: 0 0 0 2px #0a0f12;
+      }
+      .screen canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .chin {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 28px;
+      }
+      .chin-logo {
+        font: 700 12px/1 var(--display);
+        color: #5d6973;
+      }
+      .led {
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+        box-shadow: 0 0 8px #8feba7aa;
+      }
+      .connecting-state .led {
+        background: var(--warn);
+        box-shadow: 0 0 8px #f4d094aa;
+      }
+      .napper {
+        position: absolute;
+        top: -66px;
+        right: -42px;
+        width: 144px;
+        height: 144px;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+      .wait {
+        position: absolute;
+        inset: 0;
+        display: none;
+        place-content: center;
+        justify-items: center;
+        gap: 16px;
+        background: radial-gradient(#13201a, #05080a 70%);
+        text-align: center;
+      }
+      .wait strong {
+        font: 700 22px/1.1 var(--display);
+      }
+      .wait p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .dots {
+        display: flex;
+        gap: 8px;
+      }
+      .dots i {
+        width: 6px;
+        height: 6px;
+        background: var(--mint);
+        opacity: 0.25;
+        animation: dot 1.2s steps(1) infinite;
+      }
+      .dots i:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dots i:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      .dots i:nth-child(4) {
+        animation-delay: 0.6s;
+      }
+      @keyframes dot {
+        0%,
+        30% {
+          opacity: 1;
+        }
+        31%,
+        100% {
+          opacity: 0.25;
+        }
+      }
+      .connecting-state .wait {
+        display: grid;
+      }
+      .vstrip {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        padding: 0 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .vstrip span:nth-child(2) {
+        margin-right: auto;
+      }
+      .vstrip .ok {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 8px;
+        background: var(--mint);
+      }
+
+      /* Tool drawer. */
+      .drawer {
+        display: none;
+        flex-direction: column;
+        width: 320px;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .with-drawer .drawer {
+        display: flex;
+      }
+      .drawer-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .drawer-tabs button {
+        padding: 9px 10px 11px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: none;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .drawer-tabs button[aria-selected='true'] {
+        color: var(--mint);
+        border-bottom-color: var(--mint);
+      }
+      .drawer-tabs .icon-button {
+        width: 32px;
+        height: 32px;
+        margin-left: auto;
+        margin-bottom: 6px;
+      }
+      .drawer-tabs .icon-button svg {
+        width: 12px;
+        height: 12px;
+      }
+      .panel {
+        display: none;
+        flex-direction: column;
+        gap: 14px;
+        padding: 18px;
+        overflow: auto;
+      }
+      .panel.active {
+        display: flex;
+      }
+      .panel h2 {
+        margin: 0;
+        font: 700 18px/1.2 var(--display);
+      }
+      .panel .sub {
+        margin-top: -8px;
+      }
+      .type-row {
+        display: flex;
+        gap: 8px;
+      }
+      .type-row input,
+      .panel textarea {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 12px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: var(--field);
+        font: inherit;
+        font-size: 13px;
+      }
+      .panel textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .keys {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .key {
+        min-width: 40px;
+        padding: 8px 10px;
+        border: 1px solid var(--line-strong);
+        border-bottom-width: 3px;
+        border-radius: 6px;
+        background: var(--raised);
+        font-size: 12px;
+        text-align: center;
+      }
+      .key[aria-pressed='true'] {
+        color: var(--mint-ink);
+        background: var(--mint);
+        border-color: var(--mint);
+      }
+      .field-label {
+        margin: 4px 0 -6px;
+      }
+      .pair {
+        display: flex;
+        gap: 8px;
+      }
+      .pair .ghost {
+        flex: 1;
+        justify-content: center;
+      }
+      .drop {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        padding: 26px 12px;
+        border: 2px dashed #34414a;
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+      .drop .icon svg {
+        width: 36px;
+        height: 36px;
+        color: var(--art);
+      }
+      .drop strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .file {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .file span {
+        margin-right: auto;
+        overflow-wrap: anywhere;
+      }
+      .file small {
+        color: var(--muted);
+      }
+      .bar {
+        height: 6px;
+        background: var(--field);
+      }
+      .bar i {
+        display: block;
+        width: 64%;
+        height: 100%;
+        background: var(--mint);
+      }
+
+      /* Full screen: only the desktop, with a small bar that appears near the top edge. */
+      .fs-bar {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        display: none;
+        gap: 6px;
+        padding: 6px;
+        translate: -50% 0;
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        background: #12191ee8;
+        box-shadow: 0 10px 30px #0008;
+      }
+      .fullscreen .vbar,
+      .fullscreen .vstrip,
+      .fullscreen .drawer,
+      .fullscreen .chin,
+      .fullscreen .napper {
+        display: none;
+      }
+      .fullscreen {
+        grid-template-rows: 0 minmax(0, 1fr) 0;
+      }
+      .fullscreen .vstage {
+        padding: 0;
+      }
+      .fullscreen .monitor {
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: #000;
+      }
+      .fullscreen .fs-bar {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="intro">
+        <h1>Viewer</h1>
+        <p>
+          A prototype of the window that opens when you connect to another computer. The desktop
+          sits inside a pixel monitor with the cat napping on top. The tools open in a drawer only
+          when you need them, so the desktop keeps the space.
+        </p>
+      </header>
+
+      <div class="controls" role="group" aria-label="Viewer states">
+        <button type="button" id="state-connected" data-state="connected" aria-pressed="true">
+          Connected
+        </button>
+        <button type="button" id="state-keyboard" data-state="keyboard" aria-pressed="false">
+          Keyboard open
+        </button>
+        <button type="button" id="state-clipboard" data-state="clipboard" aria-pressed="false">
+          Clipboard open
+        </button>
+        <button type="button" id="state-files" data-state="files" aria-pressed="false">
+          Files open
+        </button>
+        <button type="button" id="state-connecting" data-state="connecting" aria-pressed="false">
+          Connecting
+        </button>
+        <button type="button" id="state-fullscreen" data-state="fullscreen" aria-pressed="false">
+          Full screen
+        </button>
+      </div>
+
+      <div class="frame">
+        <div class="viewer" id="viewer">
+          <header class="vbar">
+            <div class="vbrand">
+              <span class="logo" aria-hidden="true">ym</span>
+              <div>
+                <strong>osiris</strong>
+                <span class="vstatus">
+                  <i></i>
+                  <span id="status-text">Connected directly over your network</span>
+                </span>
+              </div>
+            </div>
+            <nav class="vtools" aria-label="Viewer tools">
+              <button type="button" class="tool" data-panel="keyboard" aria-pressed="false">
+                <span class="icon" data-icon="keyboard"></span>
+                Keyboard
+              </button>
+              <button type="button" class="tool" data-panel="clipboard" aria-pressed="false">
+                <span class="icon" data-icon="clipboard"></span>
+                Clipboard
+              </button>
+              <button type="button" class="tool" data-panel="files" aria-pressed="false">
+                <span class="icon" data-icon="file"></span>
+                Files
+              </button>
+              <span class="sep"></span>
+              <button type="button" class="tool" aria-label="Turn on audio" title="Audio">
+                <span class="icon" data-icon="speaker-off"></span>
+              </button>
+              <button
+                type="button"
+                class="tool"
+                aria-label="Full screen"
+                title="Full screen"
+                id="go-fullscreen"
+              >
+                <span class="icon" data-icon="fullscreen"></span>
+              </button>
+              <button type="button" class="ghost">
+                <span class="icon" data-icon="disconnect"></span>
+                Disconnect
+              </button>
+            </nav>
+          </header>
+          <div class="vbody">
+            <main class="vstage" id="stage">
+              <div class="monitor" id="monitor">
+                <canvas class="napper" id="napper" aria-hidden="true"></canvas>
+                <div class="screen" id="screen">
+                  <canvas
+                    id="desk"
+                    width="864"
+                    height="540"
+                    aria-label="Remote desktop of osiris"
+                  ></canvas>
+                  <div class="wait">
+                    <strong>Connecting to osiris</strong>
+                    <div class="dots">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </div>
+                    <p>Signed in. Starting the desktop stream…</p>
+                  </div>
+                </div>
+                <div class="chin">
+                  <span class="chin-logo">ym</span>
+                  <span class="led"></span>
+                </div>
+              </div>
+            </main>
+            <aside class="drawer" aria-label="Tools">
+              <div class="drawer-tabs" role="tablist">
+                <button type="button" role="tab" data-tab="keyboard" aria-selected="true">
+                  Keyboard
+                </button>
+                <button type="button" role="tab" data-tab="clipboard" aria-selected="false">
+                  Clipboard
+                </button>
+                <button type="button" role="tab" data-tab="files" aria-selected="false">
+                  Files
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  aria-label="Close tools"
+                  id="close-drawer"
+                >
+                  <span class="icon" data-icon="close"></span>
+                </button>
+              </div>
+              <section class="panel active" data-tab="keyboard">
+                <h2>Type on osiris</h2>
+                <p class="sub">For a tablet, or for text you want to send in one go.</p>
+                <div class="type-row">
+                  <input aria-label="Text to type" value="ssh-keygen -t ed25519" />
+                  <button type="button" class="primary compact">Send</button>
+                </div>
+                <span class="field-label">Keys</span>
+                <div class="keys">
+                  <span class="key">Esc</span>
+                  <span class="key">Tab</span>
+                  <span class="key">Enter</span>
+                  <span class="key">⌫</span>
+                  <span class="key">←</span>
+                  <span class="key">↑</span>
+                  <span class="key">↓</span>
+                  <span class="key">→</span>
+                </div>
+                <span class="field-label">Hold</span>
+                <div class="keys">
+                  <span class="key" aria-pressed="true">Ctrl</span>
+                  <span class="key">Alt</span>
+                  <span class="key">Shift</span>
+                  <span class="key">Cmd / Win</span>
+                </div>
+                <span class="field-label">Shortcuts</span>
+                <div class="keys">
+                  <span class="key">Copy</span>
+                  <span class="key">Paste</span>
+                  <span class="key">Cut</span>
+                  <span class="key">Select all</span>
+                  <span class="key">Undo</span>
+                </div>
+              </section>
+              <section class="panel" data-tab="clipboard">
+                <h2>Clipboard</h2>
+                <p class="sub">Move text between this computer and osiris.</p>
+                <textarea aria-label="Clipboard text">Meeting notes from osiris</textarea>
+                <div class="pair">
+                  <button type="button" class="ghost">Send to osiris</button>
+                  <button type="button" class="ghost">Get from osiris</button>
+                </div>
+                <button type="button" class="link-button">Copy text here</button>
+              </section>
+              <section class="panel" data-tab="files">
+                <h2>Files</h2>
+                <p class="sub">Send files to osiris. Files it sends you appear below.</p>
+                <div class="drop">
+                  <span class="icon" data-icon="file"></span>
+                  <strong>Drop a file here or choose one</strong>
+                  <span>Up to 50 MB per file</span>
+                </div>
+                <div>
+                  <div class="file">
+                    <span>photo-2026.png</span>
+                    <small>Sending · 64%</small>
+                  </div>
+                  <div class="bar"><i></i></div>
+                </div>
+                <div class="file">
+                  <span>
+                    report.pdf
+                    <br />
+                    <small>Received · 1.2 MB</small>
+                  </span>
+                  <button type="button" class="ghost">Save</button>
+                </div>
+              </section>
+            </aside>
+          </div>
+          <footer class="vstrip">
+            <span>
+              <i class="ok"></i>
+              Input available
+            </span>
+            <span>Click the desktop to control it. On a tablet, two fingers scroll.</span>
+            <span>Audio off</span>
+          </footer>
+          <div class="fs-bar">
+            <button type="button" class="tool" data-panel="keyboard" aria-pressed="false">
+              <span class="icon" data-icon="keyboard"></span>
+              Keyboard
+            </button>
+            <button type="button" class="tool" id="leave-fullscreen">
+              <span class="icon" data-icon="fullscreen"></span>
+              Exit full screen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>The cat naps on the monitor.</b>
+          It sleeps on the top edge with its tail hanging down the side, and now and then it opens
+          its eyes. It never covers the desktop.
+        </li>
+        <li>
+          <b>Tools stay out of the way.</b>
+          Keyboard, Clipboard and Files open a drawer on the right and close again, so the desktop
+          gets the most space.
+        </li>
+        <li>
+          <b>Full screen</b>
+          shows only the desktop. A small bar near the top brings back the keyboard or leaves full
+          screen.
+        </li>
+        <li>
+          <b>If the connection drops</b>
+          , this window closes and the main window says which computer disconnected, as it already
+          does.
+        </li>
+        <li>The same look will apply to the page a browser or the Android app opens.</li>
+      </ul>
+    </div>
+
+    <script src="../../public/pixel-icons.js"></script>
+    <script src="../../public/pixel-scene.js"></script>
+    <script>
+      'use strict';
+      const $ = (id) => document.getElementById(id),
+        viewer = $('viewer');
+
+      // A stand-in for the remote desktop: an Ubuntu-like desktop with a terminal and a file window.
+      function paintDesk() {
+        const g = $('desk').getContext('2d');
+        const sky = g.createLinearGradient(0, 0, 864, 540);
+        sky.addColorStop(0, '#24314a');
+        sky.addColorStop(1, '#3a2a48');
+        g.fillStyle = sky;
+        g.fillRect(0, 0, 864, 540);
+        g.fillStyle = '#0f1115';
+        g.fillRect(0, 0, 864, 16);
+        g.fillStyle = '#d7dde2';
+        g.font = '10px sans-serif';
+        g.fillText('Oct 10  19:58', 400, 11);
+        g.fillStyle = '#16181dcc';
+        g.fillRect(0, 16, 40, 524);
+        ['#e95420', '#3b82c4', '#5ba975', '#c9a227', '#8a5cc2'].forEach((c, i) => {
+          g.fillStyle = c;
+          g.fillRect(8, 30 + i * 36, 24, 24);
+        });
+        g.fillStyle = '#1e1f24';
+        g.fillRect(120, 70, 380, 250);
+        g.fillStyle = '#2d2f36';
+        g.fillRect(120, 70, 380, 22);
+        g.fillStyle = '#8feba7';
+        g.font = '12px monospace';
+        [
+          'alejandro@osiris:~$ uname -m',
+          'aarch64',
+          'alejandro@osiris:~$ ls Projects',
+          'drivers  notes.txt  yes-machine',
+          'alejandro@osiris:~$ _',
+        ].forEach((line, i) => g.fillText(line, 134, 116 + i * 20));
+        g.fillStyle = '#f2f3f5';
+        g.fillRect(450, 200, 330, 230);
+        g.fillStyle = '#dfe2e6';
+        g.fillRect(450, 200, 330, 22);
+        g.fillStyle = '#3b82c4';
+        for (let i = 0; i < 6; i++)
+          g.fillRect(476 + (i % 3) * 96, 248 + Math.floor(i / 3) * 84, 44, 34);
+        g.fillStyle = '#ffffff';
+        g.beginPath();
+        g.moveTo(600, 150);
+        g.lineTo(600, 168);
+        g.lineTo(605, 163);
+        g.lineTo(610, 172);
+        g.lineTo(613, 170);
+        g.lineTo(608, 161);
+        g.lineTo(614, 161);
+        g.closePath();
+        g.fill();
+      }
+
+      // Fit the screen to the stage at the remote desktop's 16:10 shape.
+      function fit() {
+        const stage = $('stage'),
+          full = viewer.classList.contains('fullscreen');
+        $('screen').style.width = $('screen').style.height = '0px'; // measure the stage without the old screen size
+        const box = stage.getBoundingClientRect(),
+          padX = full ? 0 : 96 + 24,
+          padY = full ? 0 : 94 + 40;
+        const width = Math.min(box.width - padX, (box.height - padY) * 1.6);
+        $('screen').style.width = `${Math.floor(width)}px`;
+        $('screen').style.height = `${Math.floor(width / 1.6)}px`;
+      }
+
+      // The napping cat: the shared cat in its nap mood, plus a tail hanging over the monitor's right edge.
+      const canvas = $('napper'),
+        ctx = canvas.getContext('2d'),
+        size = 48;
+      canvas.width = size;
+      canvas.height = size;
+      const hex = (v) => {
+        const n = parseInt(v.slice(1), 16);
+        return [n >> 16, (n >> 8) & 255, n & 255, 255];
+      };
+      const colors = Object.fromEntries(
+        Object.entries(PixelScene.PALETTE).map(([k, v]) => [k, hex(v)]),
+      );
+      const cat = new PixelScene.Cat(PixelScene.mulberry32(9), 'nap'),
+        image = ctx.createImageData(size, size);
+      let t = 0;
+      function drawCat() {
+        image.data.fill(0);
+        const put = (x, y, c) => {
+          if (x >= 0 && y >= 0 && x < size && y < size) image.data.set(c, (y * size + x) * 4);
+        };
+        cat.draw(put, 12, 0, colors);
+        const swing = [0, 1, 1, 0, -1, -1][Math.floor(t / 3) % 6];
+        for (let x = 30; x <= 35; x++) put(x, 21, colors.catLine);
+        for (let y = 22; y < 33; y++) put(35 + (y > 28 ? swing : 0), y, colors.catLine);
+        put(35 + swing, 33, colors.catDim);
+        ctx.putImageData(image, 0, 0);
+      }
+      setInterval(() => {
+        t++;
+        cat.tick();
+        drawCat();
+      }, 125);
+
+      function setState(state) {
+        document
+          .querySelectorAll('[data-state]')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === state)));
+        const panel = ['keyboard', 'clipboard', 'files'].includes(state) ? state : null;
+        viewer.classList.toggle('with-drawer', !!panel);
+        viewer.classList.toggle('connecting-state', state === 'connecting');
+        viewer.classList.toggle('fullscreen', state === 'fullscreen');
+        $('status-text').textContent =
+          state === 'connecting' ? 'Connecting…' : 'Connected directly over your network';
+        document
+          .querySelectorAll('.vbar .tool[data-panel]')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.panel === panel)));
+        document
+          .querySelectorAll('.drawer-tabs [data-tab]')
+          .forEach((b) =>
+            b.setAttribute('aria-selected', String(b.dataset.tab === (panel || 'keyboard'))),
+          );
+        document
+          .querySelectorAll('.panel')
+          .forEach((p) => p.classList.toggle('active', p.dataset.tab === (panel || 'keyboard')));
+        requestAnimationFrame(fit);
+      }
+      document
+        .querySelectorAll('[data-state]')
+        .forEach((b) => b.addEventListener('click', () => setState(b.dataset.state)));
+      document
+        .querySelectorAll('.vtools .tool[data-panel], .fs-bar .tool[data-panel]')
+        .forEach((b) =>
+          b.addEventListener('click', () =>
+            setState(b.getAttribute('aria-pressed') === 'true' ? 'connected' : b.dataset.panel),
+          ),
+        );
+      document
+        .querySelectorAll('.drawer-tabs [data-tab]')
+        .forEach((b) => b.addEventListener('click', () => setState(b.dataset.tab)));
+      $('close-drawer').addEventListener('click', () => setState('connected'));
+      $('go-fullscreen').addEventListener('click', () => setState('fullscreen'));
+      $('leave-fullscreen').addEventListener('click', () => setState('connected'));
+      PixelIcons.render();
+      paintDesk();
+      drawCat();
+      setState('connected');
+    </script>
+  </body>
+</html>

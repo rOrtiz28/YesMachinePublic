@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="../../../src/windows/host/host.css" />
+    <style>
+      /* Preview only: the clipboard card from the computer's Settings, with one sentence added. */
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+      }
+      .frame-page {
+        padding: 34px 40px 40px;
+      }
+      mark {
+        background: none;
+        color: var(--mint);
+      }
+    </style>
+    <script src="../../../public/theme.js"></script>
+    <script src="../clipboard/settings.js" defer></script>
+  </head>
+  <body>
+    <main class="frame-page">
+      <section class="view settings-view" aria-labelledby="settings-title">
+        <h1 id="settings-title" class="page-title">Settings</h1>
+        <div class="settings">
+          <div class="setting clipboard-setting">
+            <div>
+              <h2>Share the clipboard</h2>
+              <p>
+                Copy on one device and paste on the other while a device is connected, without the
+                Clipboard buttons.
+                <mark>That includes Android devices you control from here.</mark>
+              </p>
+              <div
+                class="directions"
+                id="clipboard-way"
+                role="radiogroup"
+                aria-label="Which way the clipboard goes"
+              >
+                <div
+                  class="direction-track"
+                  id="clipboard-track"
+                  aria-hidden="true"
+                  style="--stop: 1"
+                ></div>
+                <div class="direction-labels">
+                  <button type="button" role="radio" aria-checked="false" data-way="to">
+                    Only to this computer
+                  </button>
+                  <button type="button" role="radio" aria-checked="true" data-way="both">
+                    Both ways
+                  </button>
+                  <button type="button" role="radio" aria-checked="false" data-way="from">
+                    Only from this computer
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="switch"
+              id="setting-clipboard"
+              role="switch"
+              aria-checked="true"
+              aria-label="Share the clipboard"
+            ></button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

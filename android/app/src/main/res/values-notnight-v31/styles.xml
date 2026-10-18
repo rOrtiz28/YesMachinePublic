@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- When the app has told Android it is in day mode, Android opens it in the day colors. -->
+    <style name="AppTheme" parent="YesMachine.Day" />
+</resources>

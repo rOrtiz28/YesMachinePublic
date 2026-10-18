@@ -1,0 +1,17 @@
+/* Proposal for android-viewer.css: Disconnect sits at the far right, so the bar needs more room. As the window
+   narrows, the labels go in order: first the middle buttons', whose icons are the usual ones, then the device
+   buttons', and Disconnect's last, as in the computer viewer. The right column never shrinks below its buttons,
+   so in a very narrow window the middle buttons move left and the name shortens instead of anything overlapping. */
+.android .vbar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+}
+@media (max-width: 1580px) {
+  .android .vcenter .label {
+    display: none;
+  }
+}
+@media (max-width: 1230px) {
+  .android .vtools .tool .label {
+    display: none;
+  }
+}

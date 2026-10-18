@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Computer viewer</title>
+    <link rel="stylesheet" href="../../../public/style.css" />
+    <link rel="stylesheet" href="../viewer-light/frame.css" />
+    <script src="../../../public/pixel-icons.js" defer></script>
+    <script src="../../../public/pixel-scene.js" defer></script>
+    <script src="../viewer-light/frame.js" defer></script>
+    <script src="../viewer-light/fit.js" defer></script>
+    <script src="clean.js" defer></script>
+  </head>
+  <body>
+    <section id="session" class="session" aria-label="Remote desktop session" data-state="pending">
+      <header class="vbar">
+        <div class="vbrand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <div class="vtitle">
+            <h1 id="host-name" data-connected="Alejandro’s MacBook Pro">Connecting</h1>
+            <p class="vstatus">
+              <i aria-hidden="true"></i>
+              <span
+                id="connection-detail"
+                data-connected="Connected directly over your local network"
+                data-pending="Signed in. Connecting to the desktop…"
+              >
+                Waiting for the remote desktop…
+              </span>
+            </p>
+          </div>
+        </div>
+        <nav class="vtools" aria-label="Session controls">
+          <button
+            id="keyboard-button"
+            class="tool"
+            type="button"
+            data-panel="keyboard"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Keyboard"
+            title="Keyboard"
+          >
+            <span class="icon" data-icon="keyboard"></span>
+            <span class="label">Keyboard</span>
+          </button>
+          <button
+            class="tool"
+            type="button"
+            data-panel="clipboard"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Clipboard"
+            title="Clipboard"
+          >
+            <span class="icon" data-icon="clipboard"></span>
+            <span class="label">Clipboard</span>
+          </button>
+          <button
+            class="tool"
+            type="button"
+            data-panel="files"
+            aria-pressed="false"
+            aria-controls="drawer"
+            aria-label="Files"
+            title="Files"
+          >
+            <span class="icon" data-icon="file"></span>
+            <span class="label">Files</span>
+          </button>
+          <div id="screens-wrap" class="screens-wrap" hidden>
+            <button
+              id="screens-button"
+              class="tool"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="screens-menu"
+              title="Screen"
+            >
+              <span class="icon" data-icon="monitor"></span>
+              <span class="label">Screen</span>
+              <span id="screens-count" class="count"></span>
+            </button>
+            <div
+              id="screens-menu"
+              class="screens-menu"
+              role="menu"
+              aria-labelledby="screens-title"
+              hidden
+            >
+              <h2 id="screens-title" class="menu-title">Screens</h2>
+              <div id="screens-map" class="screens-map" aria-hidden="true"></div>
+              <div id="screens-rows" class="screens-rows"></div>
+            </div>
+          </div>
+          <span class="sep" aria-hidden="true"></span>
+          <button
+            id="audio-button"
+            class="tool"
+            type="button"
+            aria-pressed="false"
+            aria-label="No audio stream"
+            title="Audio"
+            disabled
+          >
+            <span class="icon" data-icon="speaker-off"></span>
+          </button>
+          <button
+            id="bars"
+            class="tool"
+            type="button"
+            aria-label="Hide bars"
+            title="Hide the bars, so the desktop fills the window"
+          >
+            <span class="icon" data-icon="chevron-up"></span>
+          </button>
+          <button
+            id="fullscreen"
+            class="tool"
+            type="button"
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <span class="icon" data-icon="fullscreen"></span>
+          </button>
+          <button
+            id="disconnect-button"
+            class="ghost"
+            type="button"
+            aria-label="Disconnect"
+            title="Disconnect"
+          >
+            <span class="icon" data-icon="disconnect"></span>
+            <span class="label">Disconnect</span>
+          </button>
+        </nav>
+      </header>
+
+      <div class="vbody">
+        <div id="desktop-stage" class="vstage">
+          <div id="monitor" class="monitor">
+            <canvas id="napper" class="napper" aria-hidden="true"></canvas>
+            <div id="screen" class="screen">
+              <div class="fake-desktop" aria-hidden="true">
+                <div class="menubar">
+                  <b></b>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <span>10:42</span>
+                </div>
+                <div class="win">
+                  <div class="win-bar">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </div>
+                  <div class="win-body">
+                    <p></p>
+                    <p></p>
+                    <p class="short"></p>
+                    <p></p>
+                    <p class="short"></p>
+                  </div>
+                </div>
+                <div class="win small">
+                  <div class="win-bar">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </div>
+                  <div class="win-body">
+                    <div class="tile"></div>
+                    <div class="tile"></div>
+                    <div class="tile"></div>
+                    <div class="tile"></div>
+                  </div>
+                </div>
+                <div class="dock">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+              </div>
+              <div id="screens-switching" class="screens-switching" role="status" hidden>
+                <span id="screens-switching-text"></span>
+              </div>
+              <div id="video-placeholder" class="wait">
+                <strong id="video-status">Connecting</strong>
+                <div class="dots" aria-hidden="true">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+                <p id="video-hint">Keep Yes Machine open on the other computer.</p>
+              </div>
+            </div>
+            <div class="chin" aria-hidden="true">
+              <span class="chin-logo">ym</span>
+              <span class="led"></span>
+            </div>
+          </div>
+        </div>
+
+        <aside id="drawer" class="drawer" aria-label="Tools" hidden>
+          <div class="drawer-tabs" role="tablist" aria-label="Tools">
+            <button
+              id="tab-keyboard"
+              type="button"
+              role="tab"
+              data-tab="keyboard"
+              aria-controls="panel-keyboard"
+              aria-selected="false"
+            >
+              Keyboard
+            </button>
+            <button
+              id="tab-clipboard"
+              type="button"
+              role="tab"
+              data-tab="clipboard"
+              aria-controls="panel-clipboard"
+              aria-selected="false"
+            >
+              Clipboard
+            </button>
+            <button
+              id="tab-files"
+              type="button"
+              role="tab"
+              data-tab="files"
+              aria-controls="panel-files"
+              aria-selected="false"
+            >
+              Files
+            </button>
+            <button
+              id="drawer-close"
+              class="icon-button"
+              type="button"
+              aria-label="Close tools"
+              title="Close tools"
+            >
+              <span class="icon" data-icon="close"></span>
+            </button>
+          </div>
+
+          <section
+            id="panel-keyboard"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-keyboard"
+            data-tab="keyboard"
+            hidden
+          >
+            <h2>
+              Type on
+              <span class="host-label">the computer</span>
+            </h2>
+            <p class="sub">For a tablet, or for text you want to send in one go.</p>
+            <div class="type-row">
+              <label class="sr-only" for="remote-text">Text to type</label>
+              <input
+                id="remote-text"
+                type="text"
+                maxlength="10000"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                placeholder="Type text here…"
+              />
+              <button id="send-text-button" class="primary compact" type="button">Send</button>
+            </div>
+            <span class="field-label">Keys</span>
+            <div class="keys" aria-label="Keys">
+              <button class="key" type="button" data-key="Escape" data-code="Escape">Esc</button>
+              <button class="key" type="button" data-key="Tab" data-code="Tab">Tab</button>
+              <button class="key" type="button" data-key="Enter" data-code="Enter">Enter</button>
+              <button
+                class="key"
+                type="button"
+                data-key="Backspace"
+                data-code="Backspace"
+                aria-label="Backspace"
+              >
+                ⌫
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowLeft"
+                data-code="ArrowLeft"
+                aria-label="Left arrow"
+              >
+                ←
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowUp"
+                data-code="ArrowUp"
+                aria-label="Up arrow"
+              >
+                ↑
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowDown"
+                data-code="ArrowDown"
+                aria-label="Down arrow"
+              >
+                ↓
+              </button>
+              <button
+                class="key"
+                type="button"
+                data-key="ArrowRight"
+                data-code="ArrowRight"
+                aria-label="Right arrow"
+              >
+                →
+              </button>
+            </div>
+            <span class="field-label">Hold</span>
+            <div class="keys" aria-label="Keys to hold">
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Control"
+                data-code="ControlLeft"
+                aria-pressed="false"
+              >
+                Ctrl
+              </button>
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Alt"
+                data-code="AltLeft"
+                aria-pressed="false"
+              >
+                Alt
+              </button>
+              <button
+                class="key modifier"
+                type="button"
+                data-key="Shift"
+                data-code="ShiftLeft"
+                aria-pressed="false"
+              >
+                Shift
+              </button>
+              <button
+                id="meta-key"
+                class="key modifier"
+                type="button"
+                data-key="Meta"
+                data-code="MetaLeft"
+                aria-pressed="false"
+              >
+                Cmd / Win
+              </button>
+            </div>
+            <span class="field-label">Shortcuts</span>
+            <div class="keys" aria-label="Shortcuts">
+              <button class="key" type="button" data-shortcut="c">Copy</button>
+              <button class="key" type="button" data-shortcut="v">Paste</button>
+              <button class="key" type="button" data-shortcut="x">Cut</button>
+              <button class="key" type="button" data-shortcut="a">Select all</button>
+              <button class="key" type="button" data-shortcut="z">Undo</button>
+            </div>
+          </section>
+
+          <section
+            id="panel-clipboard"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-clipboard"
+            data-tab="clipboard"
+            hidden
+          >
+            <h2>Clipboard</h2>
+            <p class="sub">
+              Move text between this device and
+              <span class="host-label">the computer</span>
+              .
+            </p>
+            <label class="sr-only" for="clipboard-text">Clipboard text</label>
+            <textarea
+              id="clipboard-text"
+              rows="6"
+              maxlength="1048576"
+              placeholder="Paste something to send…"
+            ></textarea>
+            <div class="pair">
+              <button id="clipboard-send" class="ghost" type="button">
+                <span>
+                  Send to
+                  <span class="host-label">the computer</span>
+                </span>
+              </button>
+              <button id="clipboard-get" class="ghost" type="button">
+                <span>
+                  Get from
+                  <span class="host-label">the computer</span>
+                </span>
+              </button>
+            </div>
+            <div class="links">
+              <button id="clipboard-paste" class="link-button" type="button">
+                Paste from this device
+              </button>
+              <button id="clipboard-copy" class="link-button" type="button">Copy text here</button>
+            </div>
+          </section>
+
+          <section
+            id="panel-files"
+            class="panel"
+            role="tabpanel"
+            aria-labelledby="tab-files"
+            data-tab="files"
+            hidden
+          >
+            <h2>Files</h2>
+            <p class="sub">
+              Send files to
+              <span class="host-label">the computer</span>
+              . Files it sends you appear below.
+            </p>
+            <label id="file-drop" class="drop" for="file-input">
+              <span class="icon" data-icon="file"></span>
+              <strong>Drop a file here or choose one</strong>
+              <span>Up to 10 GB per file</span>
+              <input id="file-input" class="sr-only" type="file" />
+            </label>
+            <p id="file-status" class="hint" role="status">Ready when you are.</p>
+            <progress
+              id="file-progress"
+              max="100"
+              value="0"
+              aria-label="File transfer progress"
+              hidden
+            ></progress>
+            <div id="downloads" class="downloads" aria-label="Files received"></div>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="vstrip">
+        <span id="input-status" class="input-status" data-state="pending">Input pending</span>
+        <span class="tip">
+          Click the desktop to control it. On a touch screen, two fingers scroll.
+        </span>
+        <span id="audio-status">No audio</span>
+      </footer>
+
+      <div id="fs-bar" class="fs-bar">
+        <button
+          class="tool"
+          type="button"
+          data-panel="keyboard"
+          aria-pressed="false"
+          aria-controls="drawer"
+        >
+          <span class="icon" data-icon="keyboard"></span>
+          <span class="label">Keyboard</span>
+        </button>
+        <button id="fs-bars" class="tool" type="button" title="Show the bars again">
+          <span class="icon" data-icon="chevron-down"></span>
+          <span class="label">Show bars</span>
+        </button>
+        <button id="fullscreen-exit" class="tool" type="button">
+          <span class="icon" data-icon="fullscreen"></span>
+          <span class="label">Full screen</span>
+        </button>
+      </div>
+    </section>
+  </body>
+</html>

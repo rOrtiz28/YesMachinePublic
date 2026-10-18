@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="color-scheme" content="dark light" />
+    <title>Android device · Yes Machine</title>
+    <link rel="stylesheet" href="../../../public/style.css" />
+    <link rel="stylesheet" href="viewer.css" />
+    <script src="../../../public/pixel-icons.js" defer></script>
+    <script src="keys.js" defer></script>
+    <script src="viewer.js" defer></script>
+  </head>
+  <body>
+    <!-- The desktop app's window for an Android device, in either mode. The main process
+         (src/main/android/windows.cjs) opens one for each device and loads this page with src/preload/android.cjs,
+         which gives it window.device. viewer.js runs the page, with keys.js choosing the keys that go as Android key
+         codes, and public/pixel-icons.js draws the icons. The styles are the viewer's public/style.css, then
+         viewer.css. The layout follows the computer viewer (public/client.html), and tests read this page to check
+         some of its buttons (test/pages/viewer-bars.test.cjs, test/pages/viewer-theme.test.cjs). -->
+    <section id="session" class="session android" data-state="pending" aria-label="Android device">
+      <!-- The bar: the device's name and the connection's state on the left, which viewer.js fills in (showStatus
+           also sets the session's data-state: pending, connected or offline); the window's buttons in the middle;
+           and the device's buttons on the right. -->
+      <header class="vbar">
+        <div class="vbrand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <div class="vtitle">
+            <h1 id="device-name">Connecting</h1>
+            <p class="vstatus">
+              <i aria-hidden="true"></i>
+              <span id="detail">Starting the device’s screen…</span>
+            </p>
+          </div>
+        </div>
+        <!-- The on-screen keyboard switch, which lets the device show its own keyboard; Full screen and Hide bars;
+             Screenshot; Files, which opens the drawer; and the sound, muted on this computer only
+             (ym.androidMuted). The small bar below repeats them, with Show bars in place of Hide bars. -->
+        <div class="vcenter">
+          <button
+            id="soft-keyboard"
+            class="tool keyboard-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            title="Let the device show its own keyboard when a text field is selected"
+          >
+            <span class="icon" data-icon="keyboard"></span>
+            <span class="label">On-screen keyboard</span>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+          <button
+            id="fullscreen"
+            class="tool"
+            type="button"
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <span class="icon" data-icon="fullscreen"></span>
+            <span class="label">Full screen</span>
+          </button>
+          <button
+            id="bars"
+            class="tool"
+            type="button"
+            title="Hide the bars, so the device fills the window"
+          >
+            <span class="icon" data-icon="chevron-up"></span>
+            <span class="label">Hide bars</span>
+          </button>
+          <button
+            id="screenshot"
+            class="tool"
+            type="button"
+            title="Save a picture of the device's screen"
+          >
+            <span class="icon" data-icon="camera"></span>
+            <span class="label">Screenshot</span>
+          </button>
+          <button
+            id="files"
+            class="tool files-toggle"
+            type="button"
+            aria-pressed="false"
+            aria-controls="drawer"
+            title="Send files to the device, and see the ones it sends"
+          >
+            <span class="icon" data-icon="file"></span>
+            <span class="label">Files</span>
+          </button>
+          <button id="sound" class="tool sound-toggle" type="button" aria-pressed="true">
+            <span class="icon" data-icon="speaker-on"></span>
+            <span class="label">Sound</span>
+          </button>
+        </div>
+        <!-- The device's Back, Home and Recents (Settings in the main window can swap Back and Recents to Samsung's
+             order, ym.recentsFirst), and Disconnect, which ends the session and closes the window. -->
+        <nav class="vtools" aria-label="Device controls">
+          <button id="back" class="tool" type="button" title="Back (right-click)">
+            <span class="icon" data-icon="back"></span>
+            <span class="label">Back</span>
+          </button>
+          <button id="home" class="tool" type="button" title="Home (middle-click)">
+            <span class="icon" data-icon="home"></span>
+            <span class="label">Home</span>
+          </button>
+          <button id="recents" class="tool" type="button" title="Recent apps">
+            <span class="icon" data-icon="recents"></span>
+            <span class="label">Recents</span>
+          </button>
+          <span class="sep" aria-hidden="true"></span>
+          <button
+            id="disconnect"
+            class="ghost"
+            type="button"
+            aria-label="Disconnect"
+            title="Disconnect"
+          >
+            <span class="icon" data-icon="disconnect"></span>
+            <span class="label">Disconnect</span>
+          </button>
+        </nav>
+      </header>
+      <div class="vbody">
+        <!-- The device's screen: a canvas viewer.js draws each frame on as soon as it is decoded. The hidden text
+             field takes what is typed, so this computer's keyboard layout and accents apply. -->
+        <div id="stage" class="device-stage">
+          <canvas
+            id="screen"
+            class="device-screen"
+            aria-label="Device screen. Click to touch."
+          ></canvas>
+          <textarea
+            id="typing"
+            class="typing"
+            aria-label="Type on the device"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          ></textarea>
+          <!-- Shown while files are dragged over the window; dropped, they go to the device's Download folder. -->
+          <div id="drop-target" class="drop-target" hidden>
+            <span class="icon" data-icon="file"></span>
+            <strong>
+              Drop to send to
+              <span class="device-label">the device</span>
+            </strong>
+            <span>It goes to the device’s Download folder.</span>
+          </div>
+          <!-- The waiting screen, until the first frame. In general mode it waits for the person at the device
+               to allow this computer. -->
+          <div id="waiting" class="wait">
+            <strong id="waiting-title">Connecting</strong>
+            <div class="dots" aria-hidden="true">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+            <p id="waiting-hint">Keep the device plugged in or on the same network.</p>
+          </div>
+        </div>
+        <!-- The Files drawer: files to send to the device's Download folder, their progress, and the last files
+             sent and received. A file the device shares to Yes Machine comes here, and this computer asks where
+             to save it. -->
+        <aside id="drawer" class="drawer" aria-label="Files" hidden>
+          <div class="drawer-tabs" role="tablist" aria-label="Tools">
+            <button
+              id="tab-files"
+              type="button"
+              role="tab"
+              aria-controls="panel-files"
+              aria-selected="true"
+            >
+              Files
+            </button>
+            <button
+              id="drawer-close"
+              class="icon-button"
+              type="button"
+              aria-label="Close files"
+              title="Close files"
+            >
+              <span class="icon" data-icon="close"></span>
+            </button>
+          </div>
+          <section id="panel-files" class="panel" role="tabpanel" aria-labelledby="tab-files">
+            <h2>Files</h2>
+            <!-- prettier-ignore -->
+            <p class="sub">Send files to <span class="device-label">the device</span>. They go to its Download folder.</p>
+            <label id="file-drop" class="drop" for="file-input">
+              <span class="icon" data-icon="file"></span>
+              <strong>Drop files here or choose them</strong>
+              <span>Up to 10 GB per file</span>
+              <input id="file-input" class="sr-only" type="file" multiple />
+            </label>
+            <p id="file-status" class="hint" role="status">Ready when you are.</p>
+            <progress
+              id="file-progress"
+              max="100"
+              value="0"
+              aria-label="File transfer progress"
+              hidden
+            ></progress>
+            <span class="field-label">From the device</span>
+            <p class="hint">
+              On the device, share a file and choose Yes Machine. It comes here, and this computer
+              asks where to save it.
+            </p>
+            <div id="transfers" class="downloads" aria-label="Files sent and received"></div>
+          </section>
+        </aside>
+      </div>
+      <!-- The status strip: a tip, and once connected the frames and megabits per second, which viewer.js
+           updates every second. -->
+      <footer class="vstrip">
+        <!-- prettier-ignore -->
+        <span class="tip">Click to touch, drag to swipe, scroll with the wheel. Right-click is Back. Drop a file to send it.</span>
+        <span id="rate"></span>
+      </footer>
+      <!-- The small bar at the top while the bars are hidden or in full screen, which fades after 3 seconds: the
+           keyboard switch, sound, screenshot, files, full screen and Show bars. -->
+      <div id="fs-bar" class="fs-bar">
+        <button
+          id="fs-keyboard"
+          class="tool keyboard-switch"
+          type="button"
+          role="switch"
+          aria-checked="false"
+          title="Let the device show its own keyboard when a text field is selected"
+        >
+          <span class="icon" data-icon="keyboard"></span>
+          <span class="label">On-screen keyboard</span>
+          <span class="switch" aria-hidden="true"></span>
+        </button>
+        <button id="fs-sound" class="tool sound-toggle" type="button" aria-pressed="true">
+          <span class="icon" data-icon="speaker-on"></span>
+          <span class="label">Sound</span>
+        </button>
+        <button
+          id="fs-screenshot"
+          class="tool"
+          type="button"
+          title="Save a picture of the device's screen"
+        >
+          <span class="icon" data-icon="camera"></span>
+          <span class="label">Screenshot</span>
+        </button>
+        <button
+          id="fs-files"
+          class="tool files-toggle"
+          type="button"
+          aria-pressed="false"
+          aria-controls="drawer"
+          title="Send files to the device, and see the ones it sends"
+        >
+          <span class="icon" data-icon="file"></span>
+          <span class="label">Files</span>
+        </button>
+        <button id="fullscreen-exit" class="tool" type="button" aria-pressed="false">
+          <span class="icon" data-icon="fullscreen"></span>
+          <span class="label">Full screen</span>
+        </button>
+        <button id="bars-show" class="tool" type="button" title="Show the bars again">
+          <span class="icon" data-icon="chevron-down"></span>
+          <span class="label">Show bars</span>
+        </button>
+      </div>
+      <!-- Notices at the bottom, for 6 seconds. After a screenshot or a file saved here, Show shows it in its
+           folder. -->
+      <div id="notice" class="notice" role="status" hidden>
+        <span id="notice-text"></span>
+        <button id="notice-show" class="link-button" type="button">Show</button>
+      </div>
+    </section>
+  </body>
+</html>

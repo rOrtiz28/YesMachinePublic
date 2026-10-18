@@ -1,0 +1,1729 @@
+/* The desktop app's main window: src/windows/host/host.html, run by the scripts beside it (common.js first, start.js
+   last). It styles the title bar, the icon sidebar and the window's three pages (Home, the rooftop cat and Settings),
+   with the app's dialogs and its toast.
+
+   The Android app uses this style sheet too: its build copies the file beside the Android home screen
+   (android/app/src/main/home/home.html) and the share dialog (android/app/src/main/share/share.html). Both load
+   home.css after it to adapt it to a touch screen, and the share dialog adds share.css.
+
+   Colors are custom properties on :root, night colors by default. Day colors replace them while the html element has
+   data-theme="light": public/theme.js sets it before the page draws, so the window opens in the mode last chosen,
+   and night-and-day.js (on Android too) changes it when the sun or the moon in the title bar is pressed. A few
+   parts have day rules of their own, with :root[data-theme='light'] in their selectors, and the house's windows
+   follow the daylight one by one (see The network house below). The viewer's style sheet, public/style.css, uses the
+   same color names and values, night and day; test/pages/viewer-theme.test.cjs checks that they match.
+
+   Icons are drawn on 12-pixel grids (public/pixel-icons.js), so they stay sharp at whole multiples of 12 pixels. */
+
+/* --- Fonts -------------------------------------------------------------------------------------------------------- */
+
+/* Pixelify Sans for the logo and headings, JetBrains Mono for everything else, from public/fonts. The paths are
+   relative to this file's folder in the repository. The Android app serves this file from its root, where the same
+   paths lead to /public/fonts/, which it serves too. With font-display: block, text waits the moment a font takes
+   to load instead of showing first in a fallback font. */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url(../../../public/fonts/pixelify-sans-latin-500-normal.woff2) format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url(../../../public/fonts/pixelify-sans-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url(../../../public/fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+  font-weight: 700;
+  font-display: block;
+}
+
+/* --- Colors and sizes --------------------------------------------------------------------------------------------- */
+
+/* Night colors, the default. Surfaces, from the page up: --bg for the page, --panel for cards, rows and dialogs,
+   --field for text fields, selects and switches, and --raised for buttons and pills. Borders are --line and the
+   stronger --line-strong. Text comes in three strengths, --text, --muted and --faint, and --art colors the large
+   icons. Mint is the brand color, with --mint-hover for a hovered mint button, --mint-ink for text on mint, and
+   --mint-tint and --mint-line for the background and border of what is selected or live; --warn and --danger come
+   with the same tint and line. The sizes are the title bar's height, the sidebar's width and the pages' side
+   gutter. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1115;
+  --panel: #12191e;
+  --field: #0f151a;
+  --raised: #151d23;
+  --line: #1f2a31;
+  --line-strong: #2b3741;
+  --text: #e6ede8;
+  --muted: #8b98a3;
+  --faint: #5d6973;
+  --art: #c5ced3;
+  --mint: #8feba7;
+  --mint-hover: #a6f2bb;
+  --mint-ink: #0f2416;
+  --mint-tint: #132119;
+  --mint-line: #2c4a37;
+  --warn: #f4d094;
+  --warn-tint: #221c12;
+  --warn-line: #5b4a2a;
+  --danger: #ff9e9e;
+  --danger-tint: #2a171b;
+  --danger-line: #5a2f36;
+  --display: 'Pixelify Sans', ui-monospace, monospace;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --titlebar: 64px;
+  --sidebar: 88px;
+  --gutter: 40px;
+}
+
+/* --- Light mode --------------------------------------------------------------------------------------------------- */
+
+/* The same names in day colors, while the html element has data-theme="light". Mint text darkens to stay readable on
+   white, and mint buttons turn dark green with white text. The logo keeps the brand's mint, the toast takes the
+   panel's color, and dialogs veil the page more lightly. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eef2f5;
+  --panel: #ffffff;
+  --field: #f6f8fa;
+  --raised: #f0f4f7;
+  --line: #dbe2e8;
+  --line-strong: #c4ced7;
+  --text: #1d2730;
+  --muted: #5b6a76;
+  --faint: #8a97a3;
+  --art: #46545f;
+  --mint: #23924c;
+  --mint-hover: #1d7f41;
+  --mint-ink: #ffffff;
+  --mint-tint: #e8f8ee;
+  --mint-line: #9ad5ad;
+  --warn: #9a6a12;
+  --warn-tint: #fff6e2;
+  --warn-line: #e4c784;
+  --danger: #c0392b;
+  --danger-tint: #fdecea;
+  --danger-line: #efb3ab;
+}
+:root[data-theme='light'] .logo {
+  background: #8feba7;
+  color: #0f2416;
+}
+:root[data-theme='light'] .toast {
+  background: var(--panel);
+}
+:root[data-theme='light'] dialog::backdrop {
+  background: #1d27305c;
+}
+
+/* --- Base elements ------------------------------------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+/* The page itself never scrolls: main scrolls inside the window's grid. */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 13px/1.5 var(--mono);
+  overflow: hidden;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+/* hidden always hides, even an element whose class sets its display. */
+[hidden] {
+  display: none !important;
+}
+/* Pixel icons: public/pixel-icons.js fills each [data-icon] element with an SVG drawn in currentColor, so CSS sets
+   their color. 24px, twice the grid, unless a rule below says otherwise. */
+.icon {
+  display: inline-grid;
+  flex: none;
+}
+.icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+/* --- Window layout ------------------------------------------------------------------------------------------------ */
+
+/* The title bar across the top, the icon sidebar on the left, and the main view, which scrolls. Home ends with the
+   network list drawn as a house, pinned to the bottom edge. */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
+  grid-template-rows: var(--titlebar) minmax(0, 1fr);
+  height: 100%;
+}
+
+/* --- Title bar ---------------------------------------------------------------------------------------------------- */
+
+/* The page draws the window's title bar, and dragging it moves the window. The native window controls sit on the left
+   on macOS and on the right elsewhere. */
+.titlebar {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+/* macOS: room on the left for the traffic lights (main.cjs places them). start.js puts platform-<name> on the body. */
+.platform-darwin .titlebar {
+  padding-left: 96px;
+}
+/* The network pill and the night/day switch, which opt out of dragging so they can be clicked. On Windows and Linux
+   the native controls are an overlay at the bar's right end; the titlebar-area values describe the part of the bar
+   left of them, so the right margin comes to the controls' width. Without the overlay the fallbacks make it 0. */
+.titlebar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  -webkit-app-region: no-drag;
+}
+/* Night or day: a sun at night, a moon by day, as tall as the pill beside it. night-and-day.js disables it while
+   the house changes between night and day, as Sarigüeya walks over. */
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  color: #ffd36b;
+}
+.theme-toggle:hover {
+  border-color: var(--mint-line);
+}
+.theme-toggle:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+:root[data-theme='light'] .theme-toggle {
+  color: #2b4a6b;
+}
+/* The ym logo and the wordmark. .logo.outline is the hero's outlined copy of the logo. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--mint);
+  color: var(--mint-ink);
+  font: 700 22px/1 var(--display);
+  letter-spacing: -0.5px;
+}
+.logo.outline {
+  background: var(--mint-tint);
+  border: 1px solid var(--mint);
+  color: var(--mint);
+}
+.wordmark {
+  font: 700 17px/1 var(--mono);
+  letter-spacing: -0.2px;
+}
+
+/* --- Status pills ------------------------------------------------------------------------------------------------- */
+
+/* A label with a square dot: the title bar's network pill and the This computer card's sharing status. Live, in mint,
+   means on a local network or sharing; warn means no network. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pill::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--faint);
+}
+.pill.live {
+  color: var(--mint);
+  border-color: var(--mint-line);
+}
+.pill.live::before {
+  background: var(--mint);
+}
+.pill.warn {
+  color: var(--warn);
+  border-color: var(--warn-line);
+}
+.pill.warn::before {
+  background: var(--warn);
+}
+
+/* --- Sidebar ------------------------------------------------------------------------------------------------------ */
+
+/* One icon button per page (Home, the rooftop cat, Settings); aria-current marks the open one. The version sits at
+   the bottom. */
+.sidebar {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 20px;
+  border-right: 1px solid var(--line);
+}
+.nav-item {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+}
+.nav-item:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.nav-item[aria-current='page'] {
+  background: var(--mint-tint);
+  color: var(--mint);
+}
+.version {
+  margin-top: auto;
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+}
+
+/* --- Main view and the hero --------------------------------------------------------------------------------------- */
+
+main {
+  grid-row: 2;
+  min-height: 0;
+  overflow: auto;
+}
+/* Each page is a column at least as tall as the main view. Home has no bottom padding, so its house sits on the
+   bottom edge; Settings and the rooftop cat page add their own. */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-height: 100%;
+  padding: 20px var(--gutter) 0;
+}
+
+/* The hero: the "Yes, from here." heading, and the link art on its right, a laptop and a monitor joined by two wires
+   through the ym logo. */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+h1 {
+  margin: 0;
+  font: 700 clamp(40px, 4.4vw, 56px)/1 var(--display);
+  letter-spacing: -0.5px;
+  text-wrap: balance;
+}
+h1 span {
+  color: var(--mint);
+}
+.lede {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.link-art {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--art);
+}
+.link-art > .icon svg {
+  width: 72px;
+  height: 72px;
+}
+.wire {
+  display: flex;
+  gap: 8px;
+}
+.wire i {
+  width: 4px;
+  height: 4px;
+  background: var(--mint);
+  opacity: 0.45;
+}
+/* While a viewer is connected to this computer, packets run along the wires: each dot lights 0.12 seconds after the
+   one before it, and the second wire continues where the first ends. steps(1) makes the dots blink rather than fade,
+   like pixel art. */
+.link-art.linked .wire i {
+  animation: packet 1.2s steps(1) infinite;
+}
+.wire i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.wire i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.wire i:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.wire i:nth-child(5) {
+  animation-delay: 0.48s;
+}
+.wire i:nth-child(6) {
+  animation-delay: 0.6s;
+}
+.wire + .logo + .wire i {
+  animation-delay: 0.72s;
+}
+.wire + .logo + .wire i:nth-child(2) {
+  animation-delay: 0.84s;
+}
+.wire + .logo + .wire i:nth-child(3) {
+  animation-delay: 0.96s;
+}
+.wire + .logo + .wire i:nth-child(4) {
+  animation-delay: 1.08s;
+}
+.wire + .logo + .wire i:nth-child(5) {
+  animation-delay: 1.2s;
+}
+.wire + .logo + .wire i:nth-child(6) {
+  animation-delay: 1.32s;
+}
+@keyframes packet {
+  0% {
+    opacity: 1;
+  }
+  25%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+/* --- Cards: This computer and Shared desktop ---------------------------------------------------------------------- */
+
+/* Two cards side by side, stacked in a narrow window. Each has a head with an icon, a title and, at its right end, a
+   pill or the audio switch. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.card-head h2 {
+  margin: 0;
+  font: 700 15px/1.3 var(--mono);
+}
+.card-head > .pill,
+.card-head > .audio-toggle {
+  margin-left: auto;
+}
+.card-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--art);
+}
+/* The muted line under a title. Long names and addresses break anywhere rather than widen the card. */
+.sub {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+/* Uppercase labels over fields. The negative bottom margin pulls the field up under its label, against the card's
+   14px gap; a span inside, such as "optional", stays lowercase. */
+.field-label {
+  display: block;
+  margin: 0 0 -8px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field-label span {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--faint);
+}
+/* A select with a chevron laid over its right end. */
+.select {
+  position: relative;
+}
+/* Share screen, on a computer with two or more screens: spaced like the card itself, as its label counts on the
+   card's gap. */
+.screen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.screen-field[hidden] {
+  display: none;
+}
+.select select {
+  width: 100%;
+  appearance: none;
+  padding: 13px 48px 13px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--field);
+  font-size: 14px;
+}
+/* The chevron. Clicks go through it to the select. */
+.select .icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  translate: 0 -50%;
+  pointer-events: none;
+  color: var(--muted);
+}
+.select select:disabled {
+  opacity: 0.6;
+}
+
+/* --- Buttons ------------------------------------------------------------------------------------------------------ */
+
+/* The primary button: mint, as wide as its card, with an icon, the label and a chevron at the right end. Compact
+   primaries sit in dialogs. */
+.primary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: 10px;
+  font: 700 15px/1 var(--mono);
+  text-align: left;
+}
+.primary {
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.primary:hover:not(:disabled) {
+  background: var(--mint-hover);
+}
+.primary .end {
+  margin-left: auto;
+}
+.primary.compact {
+  width: auto;
+  padding: 12px 18px;
+  font-size: 13px;
+}
+/* The ghost button: outlined, for everything else. A wide ghost fills its card, like Stop sharing. */
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ghost:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+/* Square icon buttons, such as Copy address and Refresh. Refresh turns while the list refreshes, in four steps like
+   the pixel art. */
+.icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--muted);
+}
+.icon-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+.icon-button.busy svg {
+  animation: turn 0.6s steps(4) infinite;
+}
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ghost.wide {
+  width: 100%;
+  gap: 16px;
+  padding: 14px 20px;
+  font-size: 14px;
+}
+/* A button that reads as a link inside a sentence. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mint);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.section-head #refresh {
+  margin-left: 6px;
+}
+
+/* --- This computer: permissions and sharing details --------------------------------------------------------------- */
+
+/* What this computer still has to allow before it can share or be controlled, one line each in the warning color,
+   with a button that opens the setting and a "?" that opens the setup guide. With nothing missing it takes no room
+   in the card. */
+.permissions {
+  display: grid;
+  gap: 8px;
+  color: var(--warn);
+  font-size: 12px;
+}
+.permissions:empty {
+  display: none;
+}
+.permissions div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.permissions button {
+  padding: 6px 10px;
+  border: 1px solid var(--warn-line);
+  border-radius: 8px;
+  background: var(--warn-tint);
+  color: var(--warn);
+  font-size: 11px;
+}
+
+/* Shown while sharing: how other computers sign in, the note that sharing starts on its own, this computer's
+   certificate fingerprint to compare, and its address for a browser, with a Copy button. */
+.pairing {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.sign-in-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sign-in-note strong {
+  color: var(--mint);
+  font-weight: 500;
+}
+.browser-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.pair-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.pair-row > div {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+#address {
+  color: var(--mint);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+details summary {
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+details .hint {
+  margin-top: 8px;
+}
+#fingerprint {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+/* --- Shared desktop card ------------------------------------------------------------------------------------------ */
+
+/* The audio switch in the card's head, the preview of what is shared, the connected viewer, and Send file and
+   Disconnect. */
+.audio-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.audio-toggle:hover:not(:disabled) {
+  color: var(--text);
+}
+.audio-toggle[aria-pressed='true'] {
+  color: var(--text);
+}
+/* Locked while sharing, since the audio is chosen before sharing starts, but not dimmed: it then says how the audio
+   is going. */
+.audio-toggle:disabled {
+  opacity: 1;
+}
+/* The preview. The video is laid over the box so the whole desktop always fits inside it, letterboxed, never
+   cropped. */
+.preview {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #0b1013;
+}
+.preview video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Over the box until sharing starts. */
+#preview-placeholder {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+#preview-placeholder p {
+  margin: 0;
+}
+#preview-placeholder .icon svg {
+  width: 60px;
+  height: 60px;
+  color: var(--faint);
+}
+.viewer {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* --- Network list ------------------------------------------------------------------------------------------------- */
+
+/* The list's heading, with the discovery status and Refresh, and a card per computer or Android device: this computer
+   first, then the others, then Add device. In the house below, the cards are drawn as windows. */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.section-head > .icon svg {
+  width: 48px;
+  height: 48px;
+  color: var(--art);
+}
+.section-head h2 {
+  margin: 0;
+  font: 700 16px/1.2 var(--mono);
+  color: var(--mint);
+}
+.devices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(204px, 1fr));
+  gap: 14px;
+}
+.device {
+  position: relative;
+  min-width: 0;
+}
+/* A card's face: a button, or a plain box for this computer, with an icon, the name and two lines of detail. The
+   right padding leaves room for the status square. */
+.device-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+  padding: 14px 30px 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  text-align: left;
+}
+button.device-main:hover {
+  border-color: var(--line-strong);
+}
+.device.current .device-main {
+  border-color: var(--mint);
+  background: var(--mint-tint);
+}
+.device-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.device-text strong {
+  overflow: hidden;
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.device-text small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The square at the top right: faint when offline, mint when online, warn when the computer's certificate changed.
+   Computers added by hand show the cat badge there instead. */
+.device .status {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  background: var(--faint);
+}
+.device.online .status {
+  background: var(--mint);
+}
+.device.changed .status {
+  background: var(--warn);
+}
+.device .badge {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  color: var(--faint);
+}
+.device .badge svg {
+  width: 18px;
+  height: 14px;
+}
+.device.online .badge {
+  color: var(--mint);
+}
+.device.changed .badge {
+  color: var(--warn);
+}
+/* An Android device's card says how to reach it: Cable or Wi-Fi, a switch at its bottom right. Choosing one the
+   device doesn't have yet opens the steps to set it up. */
+.device-transport {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--raised);
+}
+.device-transport button {
+  padding: 3px 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 10px;
+}
+.device-transport button:hover {
+  color: var(--text);
+}
+.device-transport button[aria-checked='true'] {
+  background: var(--mint-tint);
+  color: var(--mint);
+}
+.device-transport button + button {
+  border-left: 1px solid var(--line-strong);
+}
+/* The card's last line stops short of the switch. */
+.device.android .device-text small:last-child {
+  margin-right: 84px;
+}
+/* Save or Forget, at the bottom right of a computer's card, shown while the card is hovered or has focus. */
+.device-action {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 10px;
+  opacity: 0;
+}
+.device:hover .device-action,
+.device:focus-within .device-action {
+  opacity: 1;
+}
+.device-action:hover {
+  color: var(--text);
+}
+/* Add device: a dashed card at the end of the list. */
+.device.add .device-main {
+  justify-content: center;
+  gap: 10px;
+  padding-right: 16px;
+  border-style: dashed;
+  background: none;
+  color: var(--muted);
+}
+.device.add .device-main:hover {
+  color: var(--mint);
+  border-color: var(--mint-line);
+}
+/* A card new to the list pops in, once: devices.js remembers which cards have appeared. */
+.device.appear {
+  animation: appear 0.32s steps(4) both;
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- The network house -------------------------------------------------------------------------------------------- */
+
+/* The network list is a house. A canvas behind the list paints the sky, the roof, the wall and the street
+   (public/pixel-home.js, with pixel-house.js by night and pixel-day.js by day), and each card is a window: lit
+   windows are computers that are sharing now. The page sets the sizes and the art follows them: start.js (on Android
+   too) measures where the sky ends, which is the roof's top, and where the street starts. An art pixel is about
+   3 CSS pixels, a whole number of screen pixels. The section sits at the bottom of the page so the street meets the
+   edge, and its negative side margins undo the page's gutter, so the house spans the main view's whole width. */
+.house {
+  position: relative;
+  margin: auto calc(var(--gutter) * -1) 0;
+}
+/* The canvas, which pixel-home.js sizes to the house. Clicks go through it to the cards. */
+.house-art {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+/* The sky above the roof, with the list's heading at its bottom. */
+.house-sky {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 96px;
+  padding: 0 var(--gutter) 14px;
+}
+/* As tall as the painted roof: 22 art pixels (ROOF in pixel-house.js and pixel-day.js). */
+.house-roof {
+  height: 66px;
+}
+/* The wall, where the cards sit as windows. */
+.house-facade {
+  position: relative;
+  padding: 30px 60px 78px;
+}
+/* The street: the sidewalk, the curb and the road. */
+.house-street {
+  height: 66px;
+}
+/* In the desktop app (start.js puts .desktop on the body) the house's bottom is taller, for the day house: room
+   under the windows for its ground floor, with the porch and the garage, and a street tall enough for its yard,
+   fence, sidewalk and road. It stays by night too, so nothing moves when the mode changes; home.css does the same on
+   Android. */
+.desktop .house-facade {
+  padding-bottom: 150px;
+}
+.desktop .house-street {
+  height: 132px;
+}
+/* Room between the windows, and under each one for its sill. */
+.house .devices {
+  gap: 32px 26px;
+}
+/* The windows, the heading in the sky and Show all keep colors of their own instead of the page's: night colors, the
+   same as the page's, then day colors once daylight reaches each of them. As the light crosses the house,
+   night-and-day.js (on Android too) adds .day to each one it has reached; the page's own colors change halfway. */
+.house .device,
+.house-sky,
+.house-more {
+  --text: #e6ede8;
+  --muted: #8b98a3;
+  --faint: #5d6973;
+  --panel: #12191e;
+  --raised: #151d23;
+  --line: #1f2a31;
+  --line-strong: #2b3741;
+  --mint: #8feba7;
+  --mint-tint: #132119;
+  --mint-line: #2c4a37;
+  --warn: #f4d094;
+  --warn-line: #5b4a2a;
+  color: var(--text);
+}
+.house .device.day,
+.house-sky.day,
+.house-more.day {
+  --text: #1d2730;
+  --muted: #4f5e6a;
+  --faint: #8a97a3;
+  --panel: #ffffff;
+  --raised: #f3f6f8;
+  --line: #d7dee4;
+  --line-strong: #b9c4ce;
+  --mint: #23924c;
+  --mint-tint: #e9f9ee;
+  --mint-line: #7fd59a;
+  --warn: #9a6a12;
+  --warn-line: #e4c784;
+}
+/* By day the heading is dark blue against the sky. */
+.house-sky.day h2 {
+  color: #16384f;
+}
+/* By night a window is dark glass in a thin frame. A sharing computer's window is lit, green with a glow inside and
+   out; this computer's is mint; a changed certificate gives a warning-colored frame, and a computer this one is
+   connected to a mint frame. */
+.house .device-main {
+  border: 2px solid #2a343c;
+  border-radius: 3px;
+  background: #0d1317;
+}
+.house button.device-main:hover {
+  border-color: #3a4650;
+}
+.house .device.online .device-main {
+  border-color: #3e6b4d;
+  background: #12201a;
+  box-shadow:
+    inset 0 0 26px #8feba71a,
+    0 0 26px #8feba712;
+}
+.house .device.current .device-main {
+  border-color: var(--mint);
+  background: var(--mint-tint);
+}
+.house .device.changed .device-main {
+  border-color: var(--warn-line);
+}
+.house .device.connected .device-main {
+  border-color: var(--mint);
+}
+.device.connected .device-text small:last-child {
+  color: var(--mint);
+}
+/* Each window's sill: a ledge 8px wider than the window on each side, just below it, with a dark edge under it. Add
+   device has none. */
+.house .device::after {
+  content: '';
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  bottom: -10px;
+  height: 6px;
+  background: #2b353c;
+  box-shadow: 0 3px 0 #0a0f12;
+  pointer-events: none;
+}
+.house .device.add::after {
+  display: none;
+}
+.house .device.add .device-main {
+  border: 2px dashed #34414a;
+  background: #0d131780;
+}
+/* Show all, under the windows, when the list has more computers than two floors hold. */
+.house-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+.house-more .ghost {
+  background: #121a20;
+}
+/* By day a window has a white frame, gray-blue glass and a white sill; lit windows and this computer's are pale green
+   with a green outline. */
+.house .device.day .device-main {
+  border: 2px solid #f6f8f9;
+  border-radius: 4px;
+  background: #e9f0f5f5;
+  box-shadow: 0 0 0 1px #8d99a5;
+}
+.house .device.day button.device-main:hover {
+  box-shadow: 0 0 0 1px #5d6b77;
+}
+.house .device.day.online .device-main {
+  background: #effbf2;
+  box-shadow:
+    0 0 0 1px #4fb873,
+    inset 0 0 22px #8feba733;
+}
+.house .device.day.current .device-main {
+  background: #e9f9ee;
+  box-shadow: 0 0 0 2px #23924c;
+}
+.house .device.day.connected .device-main {
+  box-shadow: 0 0 0 2px #23924c;
+}
+.house .device.day::after {
+  background: #eef2f4;
+  box-shadow: 0 3px 0 #9aa6b1;
+}
+.house .device.day.add .device-main {
+  border: 2px dashed #8d99a5;
+  background: #f6f8faeb;
+  box-shadow: none;
+}
+.house-more.day .ghost {
+  background: #ffffff;
+}
+
+/* --- Toast -------------------------------------------------------------------------------------------------------- */
+
+/* Short messages at the bottom of the window, from notice() in common.js. Hidden while empty; errors in the danger
+   color. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 10;
+  max-width: min(560px, calc(100vw - 48px));
+  margin: 0;
+  padding: 12px 18px;
+  translate: -50% 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #162028;
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 12px 32px #0009;
+}
+.toast:empty {
+  display: none;
+}
+.toast.error {
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+
+/* --- Settings, setup guides and the rooftop cat ------------------------------------------------------------------- */
+
+/* The Settings page. Its setup guides come first, then the rooftop cat page, then the rows and their switches. */
+.settings-view {
+  gap: 22px;
+  padding-bottom: 40px;
+}
+/* Setup guides (public/setup-guides.js): a Settings row with a button per platform, and a dialog with a tab per
+   platform and numbered steps; the Add device dialog reuses the tabs. In the steps, .guide-key names what to find or
+   press, such as a setting or a button, and .guide-code is something to type, such as a command or an address. */
+.guide-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: none;
+}
+.guide-buttons .ghost {
+  padding: 9px 12px;
+  font-size: 12px;
+}
+.guide-dialog {
+  width: min(640px, calc(100vw - 32px));
+}
+.guide-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.guide-tabs button {
+  padding: 7px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+}
+.guide-tabs button[aria-selected='true'] {
+  color: var(--mint);
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.guide-steps {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 0 22px;
+  counter-reset: none;
+}
+.guide-steps li {
+  padding-left: 6px;
+}
+.guide-steps li::marker {
+  color: var(--mint);
+  font: 700 13px var(--mono);
+}
+.guide-steps strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.guide-steps p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.guide-key {
+  color: var(--text);
+}
+.guide-code {
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--mint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* The "?" beside each missing permission, which opens this computer's guide. */
+.permissions .help {
+  width: 26px;
+  padding: 4px 0;
+  font: 700 12px/1 var(--display);
+}
+/* The rooftop cat page: Sarigüeya's night scene on a dark panel, drawn only while the page is open, and her story
+   below it. */
+.cat-view {
+  gap: 22px;
+  padding-bottom: 40px;
+}
+.cat-story {
+  display: grid;
+  gap: 22px;
+  max-width: 780px;
+}
+.cat-scene {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  padding: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0a0e11;
+  overflow: hidden;
+}
+.cat-scene canvas {
+  display: block;
+}
+.cat-text {
+  display: grid;
+  gap: 12px;
+  max-width: 64ch;
+}
+.cat-text h2 {
+  margin: 0;
+  font: 700 26px/1.1 var(--display);
+  color: var(--mint);
+}
+.cat-text .sub {
+  margin-top: -6px;
+}
+.cat-text p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+}
+/* The title of Settings and of the rooftop cat page. */
+.page-title {
+  margin: 0;
+  font: 700 40px/1 var(--display);
+}
+/* Settings: a row per setting, its text on the left and its switch or buttons on the right. */
+.settings {
+  display: grid;
+  gap: 12px;
+  max-width: 780px;
+}
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.setting h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.setting p {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* An on/off switch: a square knob that slides right, in three steps, when it is on. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--field);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 16px;
+  height: 16px;
+  background: var(--faint);
+  transition: transform 0.16s steps(3);
+}
+.switch[aria-checked='true'] {
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.switch[aria-checked='true']::after {
+  transform: translateX(24px);
+  background: var(--mint);
+}
+/* The clipboard row's way: a slider with three stops under its text, Only to this computer, Both ways in the middle,
+   and Only from this computer. It dims and takes no clicks while the row's switch is off. */
+.directions {
+  display: grid;
+  gap: 8px;
+  width: min(500px, 100%);
+  margin-top: 14px;
+}
+.directions[aria-disabled='true'] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.direction-track {
+  --stop: 1;
+  position: relative;
+  height: 28px;
+  border: 1px solid var(--mint-line);
+  border-radius: 8px;
+  background: var(--mint-tint);
+  cursor: pointer;
+}
+/* The dotted line between the end stops. */
+.direction-track::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 12px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--mint-line) 0 2px, transparent 2px 6px);
+}
+/* The knob. clipboard.js sets --stop to 0, 1 or 2 for the chosen way, and 100% - 28px is how far the knob travels
+   from the first stop to the last. */
+.direction-track::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: calc(5px + var(--stop) * (100% - 28px) / 2);
+  width: 16px;
+  height: 16px;
+  background: var(--mint);
+  transition: left 0.16s steps(3);
+}
+/* The names of the three ways under the track, each a radio button, lined up with its stop. */
+.direction-labels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.direction-labels button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.direction-labels button:nth-child(2) {
+  text-align: center;
+}
+.direction-labels button:nth-child(3) {
+  text-align: right;
+}
+.direction-labels button[aria-checked='true'] {
+  color: var(--mint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .direction-track::after {
+    transition: none;
+  }
+}
+
+/* --- Dialogs ------------------------------------------------------------------------------------------------------ */
+
+/* The app's dialogs open as modals over a dark backdrop. Their content is a grid: the heading, a line under it, the
+   fields, and the buttons at the bottom right. */
+dialog {
+  width: min(440px, calc(100vw - 48px));
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+}
+dialog::backdrop {
+  background: #05080acc;
+}
+dialog form,
+.dialog-body {
+  display: grid;
+  gap: 16px;
+}
+dialog h2 {
+  margin: 0;
+  font: 700 24px/1.1 var(--display);
+}
+dialog .sub {
+  margin-top: -8px;
+}
+dialog input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--field);
+  font-size: 14px;
+}
+dialog input:focus {
+  border-color: var(--mint-line);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+/* Error text in a dialog, such as a sign-in that failed. */
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* --- Add device dialog -------------------------------------------------------------------------------------------- */
+
+/* One dialog for a computer or an Android device, chosen at its top. A computer is added by its address. An Android
+   device gets the USB cable's steps, or Wi-Fi's pairing code beside its steps, and a line that says how it is
+   going. */
+.add-dialog {
+  width: min(580px, calc(100vw - 32px));
+}
+.add-kind {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.add-kind button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 13px;
+}
+.add-kind button .icon svg {
+  width: 20px;
+  height: 20px;
+}
+.add-kind button[aria-checked='true'] {
+  color: var(--mint);
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.add-part {
+  display: grid;
+  gap: 16px;
+}
+.pair-panel {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+}
+.pair-steps {
+  flex: 1;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.pair-steps li + li {
+  margin-top: 6px;
+}
+.pair-steps b {
+  color: var(--mint);
+  font-weight: 500;
+}
+/* The QR code that the device's Wireless debugging scans to pair: dark on light in both modes, as QR readers
+   expect. */
+.pair-qr {
+  flex: none;
+  width: 192px;
+  height: 192px;
+  padding: 6px;
+  background: #e6ede8;
+  border-radius: 8px;
+  line-height: 0;
+}
+.pair-qr svg {
+  width: 100%;
+  height: 100%;
+  fill: #0d1115;
+}
+/* How it is going: the square is warn while waiting, mint when the device is ready and danger on an error. */
+.pair-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+}
+.pair-status i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--warn);
+}
+.pair-status.ready {
+  color: var(--text);
+  border-color: var(--mint-line);
+}
+.pair-status.ready i {
+  background: var(--mint);
+}
+.pair-status.error {
+  color: var(--danger);
+  border-color: var(--danger-line);
+}
+.pair-status.error i {
+  background: var(--danger);
+}
+/* The reminder that Wireless debugging turns off when the device restarts or leaves the network. */
+.pair-note {
+  margin: -6px 0 0;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+/* --- Sign-in, certificate and disconnection dialogs --------------------------------------------------------------- */
+
+/* The Verify this computer dialog shows the computer's name and its certificate fingerprint, which can be selected
+   to compare. The Disconnected dialog shows its icon in the warning color. */
+.trust-host {
+  margin: 0;
+  color: var(--mint);
+  font-weight: 500;
+}
+.ended-icon svg {
+  width: 48px;
+  height: 48px;
+  color: var(--warn);
+}
+.fingerprint {
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--field);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+/* A checkbox and its label, such as Remember on this computer. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--mint);
+}
+/* The eye button inside the password field's right end shows or hides the password; the field's right padding keeps
+   the text from running under it. */
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-right: 48px;
+}
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.reveal:hover,
+.reveal:focus-visible {
+  color: var(--mint);
+  background: var(--mint-tint);
+}
+
+/* --- Narrow windows and reduced motion ---------------------------------------------------------------------------- */
+
+/* As the window narrows, the link art goes first, then the cards stack, then the house's wall gets narrower margins.
+   With reduced motion nothing spins, blinks, pops in or slides. */
+@media (max-width: 1120px) {
+  .link-art {
+    display: none;
+  }
+}
+@media (max-width: 1060px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1000px) {
+  .house-facade {
+    padding: 30px 40px 78px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-button.busy svg,
+  .link-art.linked .wire i,
+  .device.appear,
+  .switch::after {
+    animation: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Android viewer</title>
+    <link rel="stylesheet" href="../../../public/style.css" />
+    <link rel="stylesheet" href="../../../src/windows/android/viewer.css" />
+    <link rel="stylesheet" href="../viewer-light/frame.css" />
+    <link rel="stylesheet" href="files.css" />
+    <script src="../../../public/pixel-icons.js" defer></script>
+    <script src="../../../public/pixel-scene.js" defer></script>
+    <script src="../viewer-light/frame.js" defer></script>
+    <script src="../viewer-light/fit.js" defer></script>
+    <script src="window.js" defer></script>
+  </head>
+  <body>
+    <section id="session" class="session android" data-state="pending" aria-label="Android device">
+      <header class="vbar">
+        <div class="vbrand">
+          <span class="logo" aria-hidden="true">ym</span>
+          <div class="vtitle">
+            <h1 id="device-name" data-connected="Alejandro’s Tab A11+">Connecting</h1>
+            <p class="vstatus">
+              <i aria-hidden="true"></i>
+              <span
+                id="detail"
+                data-connected="Connected by USB cable"
+                data-pending="Starting the device’s screen…"
+              >
+                Starting the device’s screen…
+              </span>
+            </p>
+          </div>
+        </div>
+        <div class="vcenter">
+          <button
+            id="soft-keyboard"
+            class="tool keyboard-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            title="Let the device show its own keyboard when a text field is selected"
+          >
+            <span class="icon" data-icon="keyboard"></span>
+            <span class="label">On-screen keyboard</span>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+          <button
+            id="fullscreen"
+            class="tool"
+            type="button"
+            aria-label="Full screen"
+            title="Full screen"
+          >
+            <span class="icon" data-icon="fullscreen"></span>
+            <span class="label">Full screen</span>
+          </button>
+          <button
+            id="bars"
+            class="tool"
+            type="button"
+            title="Hide the bars, so the device fills the window"
+          >
+            <span class="icon" data-icon="chevron-up"></span>
+            <span class="label">Hide bars</span>
+          </button>
+          <button
+            id="screenshot"
+            class="tool"
+            type="button"
+            title="Save a picture of the device's screen"
+          >
+            <span class="icon" data-icon="camera"></span>
+            <span class="label">Screenshot</span>
+          </button>
+          <button
+            id="files"
+            class="tool files-toggle"
+            type="button"
+            aria-pressed="false"
+            aria-controls="drawer"
+            title="Send files to the device, and see the ones it sends"
+          >
+            <span class="icon" data-icon="file"></span>
+            <span class="label">Files</span>
+          </button>
+          <button id="sound" class="tool sound-toggle" type="button" aria-pressed="true">
+            <span class="icon" data-icon="speaker-on"></span>
+            <span class="label">Sound</span>
+          </button>
+        </div>
+        <nav class="vtools" aria-label="Device controls">
+          <button id="back" class="tool" type="button" title="Back (right-click)">
+            <span class="icon" data-icon="back"></span>
+            <span class="label">Back</span>
+          </button>
+          <button id="home" class="tool" type="button" title="Home (middle-click)">
+            <span class="icon" data-icon="home"></span>
+            <span class="label">Home</span>
+          </button>
+          <button id="recents" class="tool" type="button" title="Recent apps">
+            <span class="icon" data-icon="recents"></span>
+            <span class="label">Recents</span>
+          </button>
+          <span class="sep" aria-hidden="true"></span>
+          <button
+            id="disconnect"
+            class="ghost"
+            type="button"
+            aria-label="Disconnect"
+            title="Disconnect"
+          >
+            <span class="icon" data-icon="disconnect"></span>
+            <span class="label">Disconnect</span>
+          </button>
+        </nav>
+      </header>
+      <div class="vbody">
+        <div id="stage" class="device-stage">
+          <div id="screen" class="device-screen fake-tablet" aria-hidden="true">
+            <div class="status">
+              <span>10:42</span>
+              <span>▮▮▮ 86%</span>
+            </div>
+            <div class="clock">
+              10:42
+              <small>Tuesday, October 13</small>
+            </div>
+            <div class="apps">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+            <div class="navbar"><b></b></div>
+          </div>
+          <textarea
+            id="typing"
+            class="typing"
+            aria-label="Type on the device"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          ></textarea>
+          <div id="drop-target" class="drop-target" hidden>
+            <span class="icon" data-icon="file"></span>
+            <strong>
+              Drop to send to
+              <span class="device-label">Alejandro’s Tab A11+</span>
+            </strong>
+            <span>It goes to the device’s Download folder.</span>
+          </div>
+          <div id="waiting" class="wait">
+            <strong id="waiting-title">Connecting</strong>
+            <div class="dots" aria-hidden="true">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+            <p id="waiting-hint">Keep the device plugged in or on the same network.</p>
+          </div>
+        </div>
+        <aside id="drawer" class="drawer" aria-label="Files" hidden>
+          <div class="drawer-tabs" role="tablist" aria-label="Tools">
+            <button
+              id="tab-files"
+              type="button"
+              role="tab"
+              aria-controls="panel-files"
+              aria-selected="true"
+            >
+              Files
+            </button>
+            <button
+              id="drawer-close"
+              class="icon-button"
+              type="button"
+              aria-label="Close files"
+              title="Close files"
+            >
+              <span class="icon" data-icon="close"></span>
+            </button>
+          </div>
+          <section id="panel-files" class="panel" role="tabpanel" aria-labelledby="tab-files">
+            <h2>Files</h2>
+            <p class="sub">
+              Send files to
+              <span class="device-label">Alejandro’s Tab A11+</span>
+              . They go to its Download folder.
+            </p>
+            <label id="file-drop" class="drop" for="file-input">
+              <span class="icon" data-icon="file"></span>
+              <strong>Drop files here or choose them</strong>
+              <span>Up to 10 GB per file</span>
+              <input id="file-input" class="sr-only" type="file" multiple />
+            </label>
+            <p id="file-status" class="hint" role="status">Ready when you are.</p>
+            <progress
+              id="file-progress"
+              max="100"
+              value="0"
+              aria-label="File transfer progress"
+              hidden
+            ></progress>
+            <span class="field-label">From the device</span>
+            <p class="hint">
+              On the device, share a file and choose Yes Machine. It comes here, and this computer
+              asks where to save it.
+            </p>
+            <div id="transfers" class="downloads" aria-label="Files sent and received"></div>
+          </section>
+        </aside>
+      </div>
+      <footer class="vstrip">
+        <span class="tip">
+          Click to touch, drag to swipe, scroll with the wheel. Right-click is Back. Drop a file to
+          send it.
+        </span>
+        <span id="rate">60 fps</span>
+      </footer>
+      <div id="fs-bar" class="fs-bar">
+        <button
+          id="fs-keyboard"
+          class="tool keyboard-switch"
+          type="button"
+          role="switch"
+          aria-checked="false"
+          title="Let the device show its own keyboard when a text field is selected"
+        >
+          <span class="icon" data-icon="keyboard"></span>
+          <span class="label">On-screen keyboard</span>
+          <span class="switch" aria-hidden="true"></span>
+        </button>
+        <button id="fs-sound" class="tool sound-toggle" type="button" aria-pressed="true">
+          <span class="icon" data-icon="speaker-on"></span>
+          <span class="label">Sound</span>
+        </button>
+        <button
+          id="fs-screenshot"
+          class="tool"
+          type="button"
+          title="Save a picture of the device's screen"
+        >
+          <span class="icon" data-icon="camera"></span>
+          <span class="label">Screenshot</span>
+        </button>
+        <button
+          id="fs-files"
+          class="tool files-toggle"
+          type="button"
+          aria-pressed="false"
+          aria-controls="drawer"
+          title="Send files to the device, and see the ones it sends"
+        >
+          <span class="icon" data-icon="file"></span>
+          <span class="label">Files</span>
+        </button>
+        <button id="fullscreen-exit" class="tool" type="button" aria-pressed="false">
+          <span class="icon" data-icon="fullscreen"></span>
+          <span class="label">Full screen</span>
+        </button>
+        <button id="bars-show" class="tool" type="button" title="Show the bars again">
+          <span class="icon" data-icon="chevron-down"></span>
+          <span class="label">Show bars</span>
+        </button>
+      </div>
+      <div id="notice" class="notice" role="status" hidden>
+        <span id="notice-text"></span>
+        <button id="notice-show" class="link-button" type="button">Show</button>
+      </div>
+    </section>
+  </body>
+</html>

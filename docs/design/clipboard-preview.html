@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Shared Clipboard</title>
+    <style>
+      /* Prototype only: the computer's Settings with the new clipboard card, and the viewer's Clipboard panel, which
+     follows it. Both frames are the real pages with the proposal added, scaled down. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+      }
+      @media (prefers-color-scheme: light) {
+        body {
+          background: #eef2f5;
+          color: #1d2730;
+        }
+        .frame {
+          border-color: #d7dee4 !important;
+        }
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      h2 {
+        margin: 14px 0 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+      }
+      .intro p,
+      .lead {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .frame {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+      }
+      .frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 0;
+        transform-origin: 0 0;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Shared Clipboard</h1>
+        <p>
+          Copy on one device and paste on the other, as in NoMachine. It's on by default and goes
+          both ways; the computer being controlled can turn it off or send it one way only, from one
+          card in its Settings. Try the switch and the slider: the viewer below follows.
+        </p>
+      </header>
+
+      <h2>The computer's Settings</h2>
+      <div class="frame" data-width="1240" data-height="760">
+        <iframe id="settings" title="Settings" src="clipboard/settings.html"></iframe>
+      </div>
+
+      <h2>The viewer, on the other device</h2>
+      <p class="lead">
+        The Clipboard panel says how the computer shares it. The buttons stay, for a browser that
+        can't reach its clipboard on its own, or text you want to edit first.
+      </p>
+      <div class="frame" data-width="1280" data-height="820">
+        <iframe
+          id="viewer"
+          title="Viewer"
+          src="clipboard/viewer.html?state=connected&amp;panel=clipboard"
+        ></iframe>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>From the computer to you:</b>
+          what you copy on the computer is put on this device's clipboard, ready to paste. On the
+          tablet the app puts it there itself.
+        </li>
+        <li>
+          <b>From you to the computer:</b>
+          what you copied on this device goes to the computer when you come back to the viewer.
+          Safari and Firefox only let a page read the clipboard when you paste, so there it goes as
+          you press ⌘V or Ctrl+V in the viewer, just before the paste.
+        </li>
+        <li>
+          <b>Text only</b>
+          for now, up to the same 1 MB the Clipboard panel takes.
+        </li>
+        <li>
+          <b>The setting lives on the computer being controlled,</b>
+          since what leaves it or reaches it is its owner's choice; viewers follow it. It applies to
+          the next connection.
+        </li>
+        <li>
+          <b>Android devices controlled from a computer</b>
+          aren't part of this yet; that would come after.
+        </li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const frames = [...document.querySelectorAll('.frame')];
+      function scale() {
+        for (const frame of frames) {
+          const width = +frame.dataset.width,
+            height = +frame.dataset.height,
+            s = frame.clientWidth / width,
+            iframe = frame.querySelector('iframe');
+          frame.style.height = `${Math.round(height * s)}px`;
+          Object.assign(iframe.style, {
+            width: `${width}px`,
+            height: `${height}px`,
+            transform: `scale(${s})`,
+          });
+        }
+      }
+      new ResizeObserver(scale).observe(document.querySelector('.page'));
+      // The Settings card's changes reach the viewer, as the computer's setting would.
+      addEventListener('message', ({ data }) => {
+        if (data?.clipboard) document.getElementById('viewer').contentWindow.postMessage(data, '*');
+      });
+    </script>
+  </body>
+</html>

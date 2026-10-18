@@ -1,0 +1,10 @@
+# Built, downloaded or generated files, and documents, which are written by hand.
+node_modules/
+dist/
+android/**/build/
+android/.gradle/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+package-lock.json
+*.md

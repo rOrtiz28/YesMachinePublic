@@ -1,0 +1,27 @@
+node_modules/
+
+# Build output. Publish packages as GitHub Releases instead of committing them.
+dist/
+*.apk
+*.aab
+
+*.log
+__pycache__/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs (Android Studio adds .idea/ and *.iml)
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# Local secrets and personal settings
+tools/latency/harness/token
+tools/latency/harness/pid
+.env
+.env.*

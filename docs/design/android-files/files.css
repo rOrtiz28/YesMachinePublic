@@ -1,0 +1,55 @@
+/* Proposal for android-viewer.css: the Files drawer beside the device, as in the computer viewer, and the target that
+   covers the device while a file is dragged over the window. In full screen and with the bars hidden the drawer
+   floats over the screen (style.css). */
+.android .vbody .device-stage {
+  flex: 1;
+  min-width: 0;
+}
+.android .files-toggle[aria-pressed='true'] {
+  color: var(--mint);
+  border-color: var(--mint-line);
+  background: var(--mint-tint);
+}
+.android .drop-target {
+  position: absolute;
+  inset: 14px;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  border: 2px dashed var(--mint);
+  border-radius: 16px;
+  background: #05080ad9;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+.android .drop-target[hidden] {
+  display: none;
+}
+.android .drop-target .icon svg {
+  width: 56px;
+  height: 56px;
+  color: var(--mint);
+}
+.android .drop-target strong {
+  color: var(--text);
+  font: 700 24px/1.15 var(--display);
+}
+.android .download .icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--art);
+}
+.android .download b {
+  font-weight: 500;
+  color: var(--text);
+}
+@media (prefers-color-scheme: light) {
+  .android .drop-target {
+    background: #ffffffe0;
+  }
+}

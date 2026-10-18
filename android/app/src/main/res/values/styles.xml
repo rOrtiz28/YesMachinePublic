@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Night and day, as the home screen's sun and moon choose. The app sets one of them as it starts and tells
+         Android its choice, so on Android 12 and later the screen it opens on matches too (values-notnight-v31). -->
+    <style name="YesMachine.Night" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#8feba7</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#0d1115</item>
+        <item name="android:navigationBarColor">#0d1115</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#0d1115</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">#0d1115</item>
+    </style>
+    <style name="YesMachine.Day" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#23924c</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:statusBarColor">#eef2f5</item>
+        <item name="android:navigationBarColor">#eef2f5</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#eef2f5</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">#eef2f5</item>
+    </style>
+    <style name="AppTheme" parent="YesMachine.Night" />
+    <!-- Share, then Yes Machine: only the app's dialog shows, over the app the files came from. -->
+    <style name="YesMachine.Share" parent="android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>

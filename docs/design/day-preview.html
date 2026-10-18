@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sarigüeya's House</title>
+    <script src="../../public/pixel-scene.js"></script>
+    <script src="day-house.js"></script>
+    <style>
+      /* Prototype only: light mode's network list, drawn as the user's house by day. The layout matches the night
+     house (roof, a wall where each computer is a window, the ground), so switching modes moves nothing. */
+      :root {
+        --bg: #eef2f5;
+        --panel: #ffffff;
+        --line: #d7dee4;
+        --text: #1d2730;
+        --muted: #5b6a76;
+        --faint: #8794a0;
+        --mint: #8feba7;
+        --mint-ink: #0f2416;
+        --mint-strong: #2e9a52;
+        --mint-tint: #ecfaf0;
+        --mint-line: #7fd59a;
+        --display: 'Pixelify Sans', ui-monospace, monospace;
+        --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.5 var(--mono);
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font: 700 clamp(30px, 4vw, 44px)/1.1 var(--display);
+      }
+      .intro p {
+        margin: 10px 0 0;
+        max-width: 74ch;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 16px;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+      }
+      .controls button[aria-pressed='true'] {
+        background: var(--mint);
+        border-color: var(--mint);
+        color: var(--mint-ink);
+      }
+      .frame {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+
+      /* The house: the canvas sits behind; the title, the windows and the ground are page elements on top. */
+      .house {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+      .house canvas {
+        position: absolute;
+        inset: 0 auto auto 0;
+        z-index: 0;
+      }
+      .house > :not(canvas) {
+        position: relative;
+        z-index: 1;
+      }
+      .sky {
+        height: 132px;
+        padding: 22px 28px;
+      }
+      .sky h2 {
+        margin: 0;
+        font: 700 20px/1.2 var(--display);
+        color: #16384f;
+      }
+      .sky p {
+        margin: 4px 0 0;
+        color: #2f4d63;
+        font-size: 12px;
+      }
+      .roof {
+        height: 66px;
+      }
+      .wall {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 26px 22px;
+        align-content: start;
+        padding: 26px 40px 30px 56px;
+      }
+      .band {
+        height: 114px;
+      }
+      .street {
+        height: 132px;
+      }
+
+      /* A computer is a window with a white frame and a sill; lit (sharing) windows glow mint. */
+      .window {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 56px;
+        padding: 10px 12px;
+        border: 3px solid #f6f8f9;
+        border-radius: 6px;
+        background: rgba(233, 240, 245, 0.96);
+        box-shadow:
+          0 0 0 1px #8d99a5,
+          0 6px 0 -2px #e8edf0,
+          0 7px 0 -2px #9aa6b1;
+      }
+      .window.lit {
+        background: #effbf2;
+        box-shadow:
+          0 0 0 1px #4fb873,
+          0 6px 0 -2px #e8edf0,
+          0 7px 0 -2px #9aa6b1;
+      }
+      .window.me {
+        box-shadow:
+          0 0 0 2px var(--mint-strong),
+          0 6px 0 -2px #e8edf0,
+          0 7px 0 -2px #9aa6b1;
+      }
+      .window b {
+        display: block;
+        font-size: 12px;
+      }
+      .window small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .window .led {
+        margin-left: auto;
+        width: 7px;
+        height: 7px;
+        align-self: flex-start;
+        background: #9aa6b1;
+      }
+      .window.lit .led {
+        background: #3fbf6a;
+      }
+      .window svg {
+        flex: none;
+      }
+      .window.add {
+        justify-content: center;
+        border-style: dashed;
+        border-color: #8d99a5;
+        background: rgba(246, 248, 250, 0.9);
+        box-shadow: none;
+        color: var(--muted);
+      }
+
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 80ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--muted);
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: var(--mint-strong);
+      }
+      .notes b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .swatch {
+        display: grid;
+        gap: 4px;
+        width: 92px;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .swatch i {
+        height: 34px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Sarigüeya’s House</h1>
+        <p>
+          Light mode’s network list, drawn from the photos: barrel tile roof, gray-blue stucco, the
+          stone pillar, the porch with its white balustrade and plants, the rolling garage door,
+          grass and stone tiles. Every computer is still a window. Click through the states.
+        </p>
+        <div class="controls" role="group" aria-label="This computer">
+          <button type="button" data-sharing="false" aria-pressed="true">Not sharing</button>
+          <button type="button" data-sharing="true" aria-pressed="false">Sharing</button>
+        </div>
+        <div class="controls" role="group" aria-label="Connection">
+          <button type="button" data-connected="false" aria-pressed="true">Not connected</button>
+          <button type="button" data-connected="true" aria-pressed="false">
+            Connected to or from another computer
+          </button>
+        </div>
+      </header>
+
+      <div class="frame">
+        <section class="house" id="house">
+          <canvas id="art" aria-hidden="true"></canvas>
+          <div class="sky" id="sky">
+            <h2>On your network</h2>
+            <p>Double-click a computer to connect.</p>
+          </div>
+          <div class="roof"></div>
+          <div class="wall">
+            <div class="window me lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M2 2h8v5H2zM3 3v3h6V3zM0 8h12v2H0z" />
+              </svg>
+              <div>
+                <b>osiris-mac</b>
+                <small>This device</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>osiris-windows</b>
+                <small>192.168.1.54</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>osiris</b>
+                <small>192.168.1.53</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M2 2h8v5H2zM3 3v3h6V3zM0 8h12v2H0z" />
+              </svg>
+              <div>
+                <b>Old-MacBook</b>
+                <small>192.168.1.90</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window lit">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M1 1h10v7H1zM2 2v5h8V2zM5 8h2v2H5zM3 10h6v1H3z" />
+              </svg>
+              <div>
+                <b>Office-PC</b>
+                <small>192.168.1.60</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window">
+              <svg width="24" height="24" viewBox="0 0 12 12">
+                <path fill="#1d2730" d="M3 0h6v12H3zM4 1v9h4V1z" />
+              </svg>
+              <div>
+                <b>Galaxy Tab</b>
+                <small>192.168.1.158</small>
+              </div>
+              <span class="led"></span>
+            </div>
+            <div class="window add">+ Add device</div>
+          </div>
+          <div class="band"></div>
+          <div class="street" id="street"></div>
+        </section>
+      </div>
+
+      <ul class="notes">
+        <li>
+          <b>Same layout as night.</b>
+          The roof, the windows and the ground sit where they do at night, so switching modes moves
+          nothing on the page.
+        </li>
+        <li>
+          <b>Two things, shown apart.</b>
+          Sharing opens the garage door and both gates of the front fence, which swing inward: two
+          leaves for the cars, one for the walkway. Not sharing, they are all closed. Her mood
+          follows the connection: connected to or from another computer, she wags her tail even when
+          this one isn’t sharing.
+        </li>
+        <li>
+          <b>Sarigüeya.</b>
+          Cream, as in the photos. Not sharing: asleep, flopped on her side on the balustrade in
+          front of the porch windows, breathing, with z’s. Sharing: sitting up facing you, grooming,
+          her foreleg up to her mouth on a diagonal. Connected: sitting with her tail going fast.
+        </li>
+        <li>
+          <b>Windows.</b>
+          Three jalousie windows along the porch beside the door, and two on the wall at the left
+          under the air conditioner.
+        </li>
+        <li>
+          <b>The garage.</b>
+          When this computer starts sharing, the rolling door goes up and the light inside comes on;
+          it rolls down when sharing stops.
+        </li>
+        <li>
+          <b>Small things that move:</b>
+          the clouds drift, and three cars take turns on the road below: the faded red one from the
+          photos, a Cybertruck and a modern electric one. The plates are left blank.
+        </li>
+        <li>
+          <b>Still to show you:</b>
+          the night → day button and its transition (the cat climbing down the air conditioner and
+          the trash can to the balcony), and the light colors for the rest of the app.
+        </li>
+      </ul>
+      <div class="swatches" aria-label="Colors from the photos">
+        <div class="swatch">
+          <i style="background: #d3865b"></i>
+          Roof tile
+        </div>
+        <div class="swatch">
+          <i style="background: #b6c0cb"></i>
+          Stucco
+        </div>
+        <div class="swatch">
+          <i style="background: #9d5e3e"></i>
+          Stone
+        </div>
+        <div class="swatch">
+          <i style="background: #f6f7f6"></i>
+          Balustrade
+        </div>
+        <div class="swatch">
+          <i style="background: #eef1f2"></i>
+          Garage door
+        </div>
+        <div class="swatch">
+          <i style="background: #58a53a"></i>
+          Grass
+        </div>
+        <div class="swatch">
+          <i style="background: #dcc1a3"></i>
+          Tiles
+        </div>
+        <div class="swatch">
+          <i style="background: #f2ddb9"></i>
+          Sarigüeya
+        </div>
+      </div>
+    </main>
+    <script>
+      const box = document.getElementById('house');
+      const state = { sharing: false, connected: false };
+      const scene = DayHouse.mount(document.getElementById('art'), {
+        container: box,
+        measure: () => ({
+          width: box.clientWidth,
+          height: box.clientHeight,
+          roofTop: document.getElementById('sky').offsetHeight,
+          streetTop: document.getElementById('street').offsetTop,
+        }),
+      });
+      document.querySelectorAll('.controls button').forEach((button) =>
+        button.addEventListener('click', () => {
+          const key = 'sharing' in button.dataset ? 'sharing' : 'connected';
+          button.parentElement
+            .querySelectorAll('button')
+            .forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+          state[key] = button.dataset[key] === 'true';
+          scene.setState(state);
+        }),
+      );
+    </script>
+  </body>
+</html>
