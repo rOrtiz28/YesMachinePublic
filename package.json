@@ -1,7 +1,7 @@
 {
   "name": "yes-machine",
   "productName": "Yes Machine",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Private-network remote desktop with a browser client",
   "homepage": "https://github.com/rOrtiz28/YesMachinePublic",
   "repository": {

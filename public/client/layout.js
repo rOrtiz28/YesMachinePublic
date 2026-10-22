@@ -1,6 +1,7 @@
 'use strict';
 // How the session fills the window: the computer's screen sized to its shape inside the monitor drawing, Hide bars
-// and full screen, and the tool drawer beside the screen.
+// and full screen, and the tool drawer beside the screen. It also tells the computer how large the screen is shown, so
+// the computer sends the picture at that size.
 
 // Hide bars takes away the tool bar and the status strip, so the desktop fills the window; full screen does the same
 // over the whole screen. Both leave a small bar at the top that fades after a few seconds, with Show bars to bring
@@ -11,6 +12,12 @@ let barsHidden = false;
 let quietTimer = null;
 // The drawer's tabs, one for each panel.
 const tabs = [...document.querySelectorAll('.drawer-tabs [role=tab]')];
+// The picture's area as reported to the computer, which sizes the picture for it (src/windows/shared/picture-size.js
+// there): whether the computer takes the reports, as its status says, the area last reported, in device pixels, and
+// the timer that reports a new one once the size settles.
+let viewReports = false,
+  reportedView = null,
+  viewTimer = null;
 
 // --- The screen's size ----------------------------------------------------------------------------------------
 
@@ -22,6 +29,7 @@ function fitScreen() {
   if (session.hidden) return;
   if (session.classList.contains('fullscreen')) {
     desktop.style.width = desktop.style.height = '';
+    reportView();
     return;
   }
   const ratio =
@@ -40,6 +48,60 @@ function fitScreen() {
   const fitted = Math.max(0, Math.min(width, height * ratio));
   desktop.style.width = `${Math.floor(fitted)}px`;
   desktop.style.height = `${Math.floor(fitted / ratio)}px`;
+  reportView();
+}
+
+// --- The picture's size on the computer -----------------------------------------------------------------------
+
+/** Starts reporting the picture's area, once the computer's status says it takes the reports. */
+function startViewReports() {
+  if (viewReports) return;
+  viewReports = true;
+  reportedView = null;
+  reportView();
+}
+
+/** Stops the reports when a new connection starts: its computer has to say again that it takes them. */
+function stopViewReports() {
+  viewReports = false;
+  reportedView = null;
+  clearTimeout(viewTimer);
+}
+
+/**
+ * Tells the computer how large this viewer shows its screen, in device pixels, a quarter of a second after the size
+ * settles and only when it changed by more than a few pixels. The computer then captures the screen at that size, up
+ * to the screen's own.
+ */
+function reportView() {
+  clearTimeout(viewTimer);
+  if (!viewReports) return;
+  viewTimer = setTimeout(() => {
+    const box = video.getBoundingClientRect(),
+      scale = window.devicePixelRatio || 1;
+    const width = Math.round(box.width * scale),
+      height = Math.round(box.height * scale);
+    if (width < 64 || height < 64) return;
+    if (
+      reportedView &&
+      Math.abs(reportedView.width - width) < 8 &&
+      Math.abs(reportedView.height - height) < 8
+    )
+      return;
+    if (sendControl({ type: 'view', width, height })) reportedView = { width, height };
+  }, 250);
+}
+
+/** Reports again when the pixel density changes, as when the window moves to another screen. */
+function watchPixelRatio() {
+  matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`).addEventListener(
+    'change',
+    () => {
+      reportView();
+      watchPixelRatio();
+    },
+    { once: true },
+  );
 }
 
 // --- Hide bars and full screen --------------------------------------------------------------------------------
@@ -144,6 +206,7 @@ function setUpLayout() {
     }
   });
   new ResizeObserver(fitScreen).observe(stage);
+  watchPixelRatio();
   video.addEventListener('resize', fitScreen);
   video.addEventListener('loadedmetadata', fitScreen);
 }

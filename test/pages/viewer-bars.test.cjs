@@ -3,7 +3,8 @@
 // Tests the Hide bars button in both viewers: the Android window (src/windows/android/viewer.html) and the browser
 // viewer (public/client.html). It reads their HTML source and checks the order of the buttons; no browser runs.
 // The button sits beside Full screen, and the small bar that stays at the top while the bars are hidden (#fs-bar)
-// brings them back.
+// brings them back. It also checks, in the style sheet, that the browser viewer's picture fits the screen in full
+// screen and with the bars hidden.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,4 +38,16 @@ test('both viewers can hide their bars beside Full screen, and their small bar b
       'the small bar has Full screen and Show bars',
     );
   }
+});
+
+test('in full screen, the browser viewer’s picture is sized by the screen, never by its own shape', () => {
+  // The stage's row and column take exactly its size, so a picture narrower than the screen can't make it taller
+  // than the screen and lose its bottom edge (the video then fits with object-fit: contain).
+  const css = read('public/style.css');
+  const rule = css.slice(
+    css.indexOf('.fullscreen .vstage {'),
+    css.indexOf('}', css.indexOf('.fullscreen .vstage {')),
+  );
+  assert.match(rule, /grid-template: minmax\(0, 1fr\) \/ minmax\(0, 1fr\);/);
+  assert.match(css, /video \{[^}]*object-fit: contain;/);
 });

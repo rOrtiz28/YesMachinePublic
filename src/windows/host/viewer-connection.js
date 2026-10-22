@@ -31,6 +31,8 @@ let connected = false;
 async function newViewer(id, address) {
   closePeer();
   viewerId = id;
+  // Until it reports its own area, a viewer gets the picture at the size every viewer got before (picture-size.js).
+  fitPicture(PictureSize.DEFAULT_VIEW);
   const connection = new RTCPeerConnection({ iceServers: [], iceCandidatePoolSize: 0 });
   peer = connection;
   media.getTracks().forEach((track) => connection.addTrack(track, media));
@@ -96,6 +98,12 @@ async function newViewer(id, address) {
       const message = JSON.parse(event.data);
       if (message?.type === 'screen') {
         if (typeof message.id === 'string' && message.id.length <= 64) switchScreen(message.id);
+        return;
+      }
+      // The viewer's picture area, in its device pixels: the capture follows it, up to the screen's own size.
+      if (message?.type === 'view') {
+        const view = PictureSize.viewFrom(message);
+        if (view) fitPicture(view);
         return;
       }
       // The viewer's clipboard, sent on its own; it lands here only as the clipboard setting allows.
@@ -191,8 +199,9 @@ function closePeer() {
 }
 
 /**
- * Tells the viewer what this side offers: whether the sound is shared, whether it may control this computer, and
- * the clipboard setting. Sent when the control channel opens and whenever one of these changes.
+ * Tells the viewer what this side offers: whether the sound is shared, whether it may control this computer, the
+ * clipboard setting, and that it sizes the picture for the viewer's reports ('view' messages). Sent when the control
+ * channel opens and whenever one of these changes.
  */
 function sendStatus() {
   if (channel?.readyState !== 'open' || !media) return;
@@ -202,6 +211,7 @@ function sendStatus() {
       audio: media.getAudioTracks().some((track) => track.readyState === 'live'),
       input: controlAvailable(info.permissions),
       clipboard: clipboardMode(),
+      view: true,
     }),
   );
 }

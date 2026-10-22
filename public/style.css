@@ -1101,6 +1101,10 @@ progress::-moz-progress-bar {
   display: none;
 }
 .fullscreen .vstage {
+  /* One row and one column of exactly the stage's size. Sized by the picture instead, a picture narrower than the
+     screen (a Mac's 3024×1964 on a 16:10 tablet held sideways) made the row taller than the screen, and the bottom of
+     the picture, with the Mac's Dock, was cut off. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   padding: 0;
 }
 .fullscreen .monitor {

@@ -6,7 +6,9 @@
 // this window over WebRTC (viewer-connection.js). The main process decides which screen getDisplayMedia() captures.
 //
 // Sharing follows changes while it runs: another screen chosen here or in the viewer's Screen menu, a screen that is
-// unplugged or changes resolution, and networks that come and go.
+// unplugged or changes resolution, and networks that come and go. The capture's size follows the viewer, too: it
+// reports how large it shows the picture, and fitPicture() captures the screen at that size, up to the screen's own
+// (src/windows/shared/picture-size.js).
 //
 // On macOS and Windows the capture carries the system's sound. Linux's doesn't, so there the main process records
 // the system's output with parec and sends it here as raw samples (api.onAudio), which an audio worklet
@@ -24,9 +26,9 @@ let audioWanted = read('ym.audio', true) !== false,
 let audioContext = null,
   audioTimer = null,
   audioNode = null;
-// 60 fps, and the screen's own size up to 1920×1200: scaling blurs text, and larger frames cost more to encode and to
-// decode than a tablet's hardware decoder handles comfortably.
-const VIDEO = { frameRate: { ideal: 60, max: 60 }, width: { max: 1920 }, height: { max: 1200 } };
+// The viewer's picture area that the capture is sized for (../shared/picture-size.js), and a resize under way.
+let pictureView = PictureSize.DEFAULT_VIEW,
+  fitting = null;
 // The computer's screens (src/main/sharing/screens.cjs) and the id of the shared one. With two or more, the sharing
 // card offers the choice and the viewer gets a Screen menu; either one switches the picture without ending the
 // session. Also: the switch under way, the screen chosen last, and when the system last ended the capture.
@@ -58,7 +60,7 @@ async function start() {
     renderPermissions(info.permissions);
     await api.start();
     media = await navigator.mediaDevices.getDisplayMedia({
-      video: VIDEO,
+      video: PictureSize.captureFor(pictureView),
       audio: audioWanted && info.platform !== 'linux',
     });
     // Sharing was stopped while the screen was being captured.
@@ -259,7 +261,10 @@ function switchScreen(id) {
  */
 async function recapture() {
   const fresh = (
-    await navigator.mediaDevices.getDisplayMedia({ video: VIDEO, audio: false })
+    await navigator.mediaDevices.getDisplayMedia({
+      video: PictureSize.captureFor(pictureView),
+      audio: false,
+    })
   ).getVideoTracks()[0];
   if (!media) {
     fresh.stop();
@@ -301,6 +306,28 @@ function watchEnded(track) {
     },
     { once: true },
   );
+}
+
+// --- The picture's size ---------------------------------------------------------------------------------------
+
+/**
+ * Sizes the capture for the viewer's picture area, `view` ({ width, height } in its device pixels): the shared track
+ * takes the new size in place, so the session goes on. While one size is being applied, newer ones wait, and only the
+ * newest is applied after it.
+ */
+function fitPicture(view) {
+  pictureView = view;
+  if (fitting) return;
+  fitting = (async () => {
+    let applied = null;
+    while (applied !== pictureView) {
+      applied = pictureView;
+      const track = media?.getVideoTracks()[0];
+      if (!track) break;
+      await track.applyConstraints(PictureSize.captureFor(applied)).catch(() => {});
+    }
+    fitting = null;
+  })();
 }
 
 // --- Networks -------------------------------------------------------------------------------------------------

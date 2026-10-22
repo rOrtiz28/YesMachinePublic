@@ -22,6 +22,7 @@ let hasAudio = false;
  * the session ends.
  */
 function startPeer(thisGeneration) {
+  stopViewReports();
   peer = new RTCPeerConnection({ iceServers: [] });
   const currentPeer = peer;
   remoteStream = new MediaStream();
@@ -132,6 +133,7 @@ function startPeer(thisGeneration) {
           renderClipboardMode();
         }
         if (message.audio === false && !remoteStream.getAudioTracks().length) hasAudio = false;
+        if (message.view === true) startViewReports();
         updateInputStatus();
         updateAudio();
       } else if (message.type === 'error') {

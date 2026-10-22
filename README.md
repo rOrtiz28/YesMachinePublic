@@ -19,11 +19,11 @@
 
 An English-language remote desktop app for devices on the same private network. Run the desktop app on a computer and connect to it from another device's browser, from Yes Machine on another computer, or from the Android app. The desktop app can also control an Android phone or tablet, through the Yes Machine app on it or through Android's USB or Wi-Fi debugging connection.
 
-**Version 1.0.2 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
+**Version 1.1.0 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
 
 ## What it does
 
-- **See and control another computer:** its main screen over WebRTC at up to 60 frames per second and 1920×1200, with keyboard, pointer, click, double-click, drag and scroll. A pointer move shows on screen in about 80 ms on good Wi-Fi.
+- **See and control another computer:** its main screen over WebRTC at up to 60 frames per second, as large as your window shows it, up to the screen's own size, with keyboard, pointer, click, double-click, drag and scroll. A pointer move shows on screen in about 80 ms on good Wi-Fi.
 - **Hear it:** the computer's sound, when its platform and permissions allow capture.
 - **Control an Android phone or tablet** from a computer: touch, type, hear it, and pass files and copied text, in [general or advanced mode](#control-an-android-device).
 - **Move files** either way, up to **10 GB each**, straight to disk.
@@ -243,7 +243,7 @@ Both devices must reach each other on the private network, over Wi-Fi or Etherne
 
 ## Current limits
 
-- One screen at a time; with several, choose which on the computer's card or in the viewer's Screen menu (on Wayland, in the desktop's own dialog). Screens larger than 1920×1200 are scaled down.
+- One screen at a time; with several, choose which on the computer's card or in the viewer's Screen menu (on Wayland, in the desktop's own dialog). The picture follows the viewer's window, up to 3840×2400; a larger screen is scaled down to that. Viewers from before 1.1, such as the Android app 1.0.2, get it at up to 1920×1200.
 - It uses a desktop where someone is logged in. It doesn't get past Windows UAC, a locked screen or a login screen, and there are no unattended or headless sessions. On Wayland, someone at the computer chooses the screen each time sharing starts.
 - The clipboard carries plain text only. No shared folders, printer forwarding or USB forwarding.
 - Double-clicks work, but how they behave across real applications and devices still needs checking. Double-clicks with keys held down aren't supported.
@@ -262,7 +262,7 @@ The code is in four parts: the desktop app, the browser viewer, the Android app 
 | `src/preload/` | The only bridges between the sandboxed windows and the main process |
 | `src/windows/host/` | The main window: the network list, sharing this computer, Settings, and the WebRTC connection to the viewer |
 | `src/windows/android/` | The window for an Android device: hardware-decoded video, touch, wheel and keyboard, files and the clipboard |
-| `src/windows/shared/pcm-worklet.js` | Raw sound playback: a Linux computer's system sound into its shared stream, and an Android device's sound in its window |
+| `src/windows/shared/` | Raw sound playback (`pcm-worklet.js`): a Linux computer's system sound into its shared stream, and an Android device's sound in its window. The picture's size for each viewer (`picture-size.js`) |
 | `public/` | The browser viewer (`client.html`, with its scripts in `client/` and `style.css`), and the pixel art, key rules, theme, setup guides and fonts that the desktop and Android apps share |
 | `android/app/` | The Android app: viewing computers, general mode's screen sharing and control, files and the clipboard with a controlling computer, and Share to Yes Machine. See [android/README.md](android/README.md) |
 | `android/stream/` | The device side of advanced mode: screen mirror, hardware H.264 encoder, input injection, sound, files and the clipboard, run over adb |
