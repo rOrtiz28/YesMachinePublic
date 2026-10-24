@@ -309,10 +309,7 @@ function renderDevices() {
     (items.some((i) => i.online)
       ? 'Tap a computer to connect.'
       : 'Looking for computers sharing on your network…');
-  $('saved-summary').textContent = saved.length
-    ? `${saved.length} saved ${saved.length === 1 ? 'computer' : 'computers'}.`
-    : 'No saved computers yet.';
-  $('forget-all').disabled = !saved.length;
+  renderSavedList();
   if (signature === lastDevices) return;
   lastDevices = signature;
   $('devices').replaceChildren(...shown.map(deviceCard), addCard());
@@ -327,8 +324,13 @@ function renderDevices() {
 
 // The same saved entry: the same address and port, and both discovered or both added by hand.
 const sameEntry = (a, b) => keyOf(a) === keyOf(b) && manualEntry(a) === manualEntry(b);
+/**
+ * Saves an entry, replacing the same one if it was already saved. It keeps when it was first saved (since, in
+ * milliseconds), for Settings' list.
+ */
 function storeSaved(entry) {
-  saved = [...saved.filter((d) => !sameEntry(d, entry)), entry];
+  const since = saved.find((d) => sameEntry(d, entry))?.since || Date.now();
+  saved = [...saved.filter((d) => !sameEntry(d, entry)), { ...entry, since }];
   write('ym.saved', saved);
   renderDevices();
 }
@@ -405,8 +407,13 @@ function addComputer(event) {
     $('add-error').hidden = false;
     return;
   }
+  // The typed name, at most 64 characters; a cut through an emoji (two UTF-16 units) drops its first half.
+  const name = $('add-name')
+    .value.trim()
+    .slice(0, 64)
+    .replace(/[\ud800-\udbff]$/, '');
   const entry = {
-    name: $('add-name').value.trim().slice(0, 64) || match[1],
+    name: name || match[1],
     address: match[1],
     port,
     platform: '',

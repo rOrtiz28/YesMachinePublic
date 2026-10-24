@@ -63,7 +63,7 @@ contextBridge.exposeInMainWorld('yesMachine', {
   signIn: invoke('sign-in'),
   signInSaved: invoke('sign-in-saved'),
   // Settings: approved certificates and remembered sign-ins.
-  trustedCount: invoke('trusted-count'),
+  trustedList: invoke('trusted-list'),
   forgetTrusted: invoke('forget-trusted'),
   credentialsInfo: invoke('credentials-info'),
   forgetCredentials: invoke('forget-credentials'),

@@ -519,6 +519,66 @@ The picture was always at most 1920×1200. Now the viewer reports how large it s
 - **The tablet as the viewer, with the 1.1.0 app**, updated over 1.0.2 and keeping its data, viewing the Mac. It reported 1158×753 with the bars, 1920×1249 in full screen held sideways and 1200×1920 held upright, and the Mac's capture followed each. The 1249 showed a fault that was older than this change: in full screen the stage's grid row was sized by the picture, so the Mac's 3024×1964 picture, narrower than the tablet's 16:10 screen, came out taller than the screen, and the user saw the Mac's Dock cut in half at the bottom. Headless Chrome as a 1280×800 tablet showed the same 1280×831 box. With the row and column sized by the stage instead, the box was 1280×800, and on the tablet the viewer reported 1920×1200, the Mac sent 1846×1200, and the user saw the whole screen, Dock included.
 - Not checked yet: hardware encoding (the picture goes as VP8, which the Mac encodes in software).
 
+## Updating to 1.1.0 (October 21, 2026)
+
+- **The Mac:** the app from the 1.1.0 dmg replaced a test build in Applications, with a valid signature and the login agent unchanged.
+- **The tablet:** the 1.1.0 APK installed over 1.0.2 as an update, keeping the app's data.
+- **The Ubuntu VM:** opening the 1.1.0 deb, App Center said Yes Machine was already installed and didn't update it. `sudo apt install` with the deb's path upgraded 1.0.2 to 1.1.0, and the README now says to update that way.
+
+## The app's icon on Linux (October 21, 2026)
+
+Ubuntu's app list showed a generic icon for Yes Machine installed from the deb: the deb had the icon only at 1024×1024, and the icon theme (hicolor) has folders only up to 512×512. Built with one PNG per size from 16×16 to 512×512, the deb installs each in its folder, and after the user reinstalled it on the Ubuntu VM, the app list showed the ym icon.
+
+## Android fixes (October 21, 2026)
+
+Five faults on the Android side, found by reading the code after validation, were fixed, along with one on the computer that held its file offers. Checked on the SM-X230 (Android 16) with the 1.1.2-1 app, installed as an update, and with the Mac sharing from the 1.1.2-1 build in Applications, which replaced 1.1.0 with a valid signature and the login agent unchanged:
+
+- **The advanced-mode server's secret.** Every advanced-mode session now gives the device's server a random 16-byte secret, and each connection has to start with it. A test script on the Mac reached the server through the session's adb forward, with the Mac app's test copy viewing the tablet in advanced mode. The server closed a connection that sent 16 wrong bytes after 14 ms, one that sent nothing after 2015 ms, and a file connection's opening without the secret after 18 ms. None of them got a byte back, and the viewer window kept showing the tablet.
+- **Canceling a file shared from the tablet in advanced mode.** Before, the app deleted its outbox folder before the server saw the cancel, and the whole file reached the computer. The user shared a large file with Share, then Yes Machine, and pressed **Cancel** while it was sending. The Mac had 4.7 MB of it at 22:24:28 and 31.9 MB two seconds later, and at 22:24:31 the transfer stopped and the partial file was deleted. Canceled earlier, while the app was still preparing the file, it said **Canceled**, and nothing reached the Mac.
+- **The home screen after a viewer.** The advanced-mode session ended while the tablet showed the Mac in a viewer. When the user closed the viewer, the home screen showed at once that the Mac no longer controlled the tablet. Before, it waited until the app went to the background and came back.
+- **A file that arrives behind the file chooser.** The Mac sent a 300 MB file to the tablet's viewer, and the user opened the viewer's file chooser while it arrived and stayed there about 40 seconds. Back in the viewer, the app asked where to save the file. Before, it deleted the file without a word.
+- **A second file while one waits to be saved.** The Mac sent a 1 MB file, and the user left the tablet's save screen open and sent another. The Mac said at once "The viewer is still saving another file. Send this one once it has." Before, the second offer was lost, and the computer waited 10 minutes before it could send another.
+- **A file asked for from another address.** The computer ends that offer at once, with "The file was asked for from another address. Send it again." Before, it waited 10 minutes. The sharing server's tests cover it; it wasn't tried on a device.
+- **Disconnecting after a file arrived** closed the app. The user found it after the 300 MB file: the download's connection stays open in the session's HTTP client, and closing the viewer closed that connection on the main thread. Closing a TLS connection sends its closing message, network use that Android stops an app for on the main thread. The fault was older than these fixes. With the connections closed on a thread of their own, the user did the same steps again and pressed **Disconnect**, and the tablet's crash log had no new entry for Yes Machine.
+
+Three more followed, in the 1.1.2-2 app. A test script on the Mac started advanced mode's server on the tablet over USB, the old build and the new one in turn, and counted the stream's bytes without keeping them:
+
+- **An oversized typed text.** The server took a text message's length as it came. Sent one text message that claimed 100 MB and carried nothing, the old server kept streaming the picture, but its input thread waited for the 100 MB, so touches and keys would have stopped. The new one refuses more than 16,384 bytes, as general mode already did, and closed the connection 22 ms later; the server ended 31 ms later. The computer sends at most 2000 characters.
+- **Names cut through an emoji.** Names were cut to their length in UTF-16 units, so a cut could keep the first half of an emoji. Through the computer's own advanced-mode code, a file named 179 "a"s, an emoji and ".txt" (186 units) went to the server's file connection. The old server cut it inside the emoji and couldn't save it: "The device couldn’t save it in its Download folder." The new one saved it as the 179 "a"s, with no broken character, and the file was deleted afterwards. The same cut now applies everywhere a name is cut: computers' labels in the Android app, file names on the computer, in the viewer and in the Android app, and the names of screens and computers. Automated tests cover them.
+- **The TLS test's certificate** would have expired on 5 October 2027. It was renewed until 2126 with the same key and contents, and a test fails a year before it expires.
+
+With the 1.1.2-2 app installed over 1.1.2-1, keeping its data, the user opened the Mac in the viewer, used it, and pressed **Disconnect**: everything worked, and the crash log had no new entry for Yes Machine.
+
+## Lists in Settings (October 21, 2026)
+
+The user asked for Settings to show what it forgets, with a date and the name of each computer, and to forget one, several or all, starting with trusted certificates and allowed computers. The prototype (`docs/design/trusted-lists-preview.html`) was approved after the user also asked for the same list on saved computers and remembered sign-ins, opened by a click anywhere on the row. In the desktop app, saved computers, remembered sign-ins and trusted certificates are now lists; the Android app has those and its allowed computers. Each entry shows its name, system, address or account, and the date it was kept, and earlier entries say "Date not recorded".
+
+- **The desktop app from source**, with a profile of its own beside the installed app, and stores written in the earlier format: a bare fingerprint for 192.168.1.60:4777 and a sign-in without a name or date. Both loaded with "Date not recorded". The certificate took the name of a saved computer at that address, Lab Mac, and the sign-in took the name of the Mac that discovery found at its address, once discovery found it. Approving the Mac's real certificate through the app's own calls listed it with its name, macOS and "Trusted Oct 21, 2026". Forgetting one certificate removed only that one, and the notice said "Forgot Lab Mac’s certificate. It asks to be verified again." Select all checked both saved computers, and Forget asked "Click again to forget all".
+- **Installed** as 1.1.3-1 on the Mac, in Applications with the local signing certificate, and on the tablet, keeping their data. The user tried the lists in both and found them working.
+- **The user's notes, fixed:**
+  - Select all's check sat high in its box. The checks are now blocks centered in the box.
+  - The checks looked rough on the tablet. At 12px on its 1.5× screen, each pixel of the 12×12 icon covered one or two of the screen's. The page now sizes the icons so each pixel covers whole pixels of the screen: 16px on the tablet, and 12px on the Mac. Headless Chrome at 1×, 1.5×, 2× and 2.625× drew every pixel the same size.
+  - Opening a list felt slow. The row grew in four steps over 0.24 s, and its entries popped in one after another, the fourth 0.6 s after the click. It now grows in three steps over 0.16 s, and the entries pop in together, all shown 0.32 s after a click in headless Chrome.
+
+The user confirmed each fix on both devices. The stores' tests cover the names, the dates, forgetting only what is chosen and the earlier formats, and a page test covers the lists' order, wording and markup.
+
+## The sign-in limit (October 24, 2026)
+
+A computer allowed five sign-ins a minute from each address and five from all of them together, right or wrong, so one device could use up everyone's minute. At the user's choice it now allows twenty failed sign-ins a minute from each address and a hundred from all of them, and a right password never counts. A sign-in counts while its password is checked and is taken back when it proves right, so many sent at once can't all pass.
+
+- The sharing server's tests: twenty wrong passwords from one address get "That user name or password is not correct." and the twenty-first, even with the right password, has to wait; a minute later it signs in. Twenty-five right passwords in a row never spend the limit. The limit across addresses isn't covered, since the test server only takes connections from one address.
+- With 1.1.3-2 installed on the Mac, the user forgot the tablet's remembered sign-in for the Mac in Settings, typed a wrong password six times on the tablet, and then the right one: every wrong one was refused as wrong, where the sixth used to be told to wait, and the right one signed in at once.
+
+## Version 1.1.3 (October 24, 2026)
+
+The first public version after 1.1.0, with everything since: the icon on Linux, the Android fixes, Settings' lists and the sign-in limit. The installers were built on the Apple silicon Mac from the published code.
+
+- **Contents.** Every desktop package (macOS on Apple silicon and Intel, Windows on x64 and ARM, Linux on x64 and ARM) is version 1.1.3 with Settings' lists and the new sign-in limit, and its Android stream server, built from the same code, refuses an oversized typed text. The Windows installer packs both systems' apps as zips. The ARM deb is version 1.1.3, with the public repository as its homepage. The Apple silicon app's signature verified, made with the local signing certificate. The APK is version 1.1.3 (code 12), signed with the release key, with Settings' lists.
+- **The Ubuntu VM** (24.04 on ARM): the user updated the 1.1.0 deb with `sudo apt install`. dpkg reports 1.1.3, the app runs from `/opt/Yes Machine` with its AppArmor profile, and starting at login still points at the installed app.
+- **The Mac:** the app from the Apple silicon dmg replaced 1.1.3-2 in Applications, with a valid signature, and the login agent unchanged.
+- **The tablet:** the APK installed over 1.1.3-1 as an update, keeping the app's data.
+- Not tried for this version: Windows, the x64 builds, and the Intel Mac build.
+
 ## Checks still required
 
 1. Run the app on Windows PCs, an Intel Mac, and x64 Linux (Windows on ARM was checked in a VM). Check native module loading, capture, input, permissions, sign-in, audio, and shutdown on each.
@@ -526,7 +586,7 @@ The picture was always at most 1920×1200. Now the viewer reports how large it s
 3. On Android, verify detailed touch gestures, two-finger scrolling, the software keyboard, clipboard permission flows, and downloads.
 4. Audible sound now reaches the tablet from the Mac and the Ubuntu VM. Check it on a desktop viewer, and check mute and unmute and stopping the session.
 5. Send real files in both directions between separate devices, over Wi-Fi, including files of several gigabytes and one that doesn't fit the receiving disk, from Safari and Firefox too, and to the Android app. Confirm the host Save dialog, cancellation, and exact saved bytes.
-6. Sign in with a wrong password until the five-per-minute limit applies, and check that **Remember** survives an app restart on each platform.
+6. Sign in with a wrong password until the limit of twenty failures a minute applies, and check that **Remember** survives an app restart on each platform.
 7. Sign in from more browsers (Firefox, Safari, and an Android browser) with a real account, including a wrong password and the password manager.
 8. Connect over Ethernet as well as Wi-Fi, including a computer with both, and unplug and plug the cable while sharing.
 9. Check international keyboard layouts, composed text, display scaling, sleep and wake, and a changed network address.

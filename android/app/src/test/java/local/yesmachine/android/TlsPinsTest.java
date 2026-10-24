@@ -10,6 +10,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.net.ssl.KeyManagerFactory;
@@ -26,8 +27,10 @@ import org.junit.Test;
  * checks compare against the endpoint's address while the connection goes to loopback, and they call the client's
  * host name check directly.
  *
- * The fixture certificate is valid until 5 October 2027. After that, the test that expects a successful handshake fails
- * until the fixture is replaced.
+ * The fixture certificate is valid until 28 September 2126. It was made with OpenSSL from the fixture key, as
+ * `openssl req -x509 -new -key test-host-key.pem -sha256 -days 36500 -subj "/CN=Yes Machine Test Only"` with the
+ * extensions it shows (no key identifiers, CA:FALSE, digital signature and key encipherment, server authentication,
+ * IP address 192.168.1.20). A test fails a year before it expires, so it is replaced in time.
  */
 public class TlsPinsTest {
 
@@ -95,6 +98,12 @@ public class TlsPinsTest {
     }
 
     // --- Tests ---
+
+    @Test
+    public void theFixtureCertificateIsValidForAnotherYear() throws Exception {
+        long year = 365L * 24 * 60 * 60 * 1000;
+        certificate().checkValidity(new Date(System.currentTimeMillis() + year));
+    }
 
     @Test
     public void exactApprovedLeafPinAllowsTlsAndBindsHostname() throws Exception {

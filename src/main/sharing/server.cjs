@@ -15,8 +15,9 @@
 //     host to viewer: paired, replaced, offer and ice (WebRTC signaling, from signal()),
 //       file-ready, file-done, download-offer, download-progress, download-end, download-error,
 //       and error;
-//     viewer to host: answer and ice (WebRTC signaling, to onSignal), and file-start, file-chunk
-//       and file-end (a file from the viewer, to onUpload).
+//     viewer to host: answer and ice (WebRTC signaling, to onSignal), file-start, file-chunk
+//       and file-end (a file from the viewer, to onUpload), and download-decline (an offered file
+//       the viewer can't take now, which paired's `declines: true` says this host understands).
 //
 // The screen, sound, input and clipboard don't pass through this server: they travel over the
 // WebRTC connection, which the host window (src/windows/host/) sets up with the signaling relayed
@@ -39,6 +40,9 @@ const ROOM = 256 * 1024 * 1024; // what an arriving file must leave free on this
 const OFFER_MS = 10 * 60 * 1000; // how long a viewer has to start taking a file the host offers
 // How long a sign-in ticket can wait to be spent on the session socket.
 const TICKET_MS = 60 * 1000;
+// The failed sign-ins allowed in a minute: from each address, and from every address together.
+const FAILURES_PER_ADDRESS = 20,
+  FAILURES_IN_ALL = 100;
 // The fonts the viewer page uses, served from public/fonts/ like the rest of the page.
 const VIEWER_FONTS = [
   'pixelify-sans-latin-700-normal.woff2',
@@ -204,11 +208,11 @@ async function createLanServer(options) {
   // The session socket of the signed-in viewer (one at a time), and whether stop() was called.
   let viewer = null,
     stopped = false;
-  // Recent sign-in attempt times, by address.
+  // The times of recent sign-ins that failed or are still being checked, by address.
   const attempts = new Map();
   // Every open connection, so that stopping can close them all at once.
   const sockets = new Set();
-  // Recent sign-in attempt times from every address together.
+  // The same times from every address together.
   let globalAttempts = [];
   // A successful sign-in returns a one-time ticket that the viewer spends on its session socket.
   const tickets = new Map();
@@ -218,18 +222,28 @@ async function createLanServer(options) {
   // --- Signing in: POST /login ---
 
   /**
-   * Whether a sign-in from `ip` at time `now` must wait; an attempt let through is counted.
-   * Sign-in attempts are limited to five per minute from each address and five per minute across
-   * the host.
+   * Whether a sign-in from `ip` at time `now` must wait: in the last minute, FAILURES_PER_ADDRESS
+   * sign-ins from that address, or FAILURES_IN_ALL from every address, failed or are still being
+   * checked. One let through counts from now on, and forgive() takes it back if it succeeds, so
+   * only failures spend the limit, and many sent at once can't all pass while they're checked.
    */
   function limited(ip, now) {
     const prior = (attempts.get(ip) || []).filter((time) => now - time < 60000);
     globalAttempts = globalAttempts.filter((time) => now - time < 60000);
-    if (prior.length >= 5 || globalAttempts.length >= 5) return true;
-    prior.push(now);
     attempts.set(ip, prior);
+    if (prior.length >= FAILURES_PER_ADDRESS || globalAttempts.length >= FAILURES_IN_ALL)
+      return true;
+    prior.push(now);
     globalAttempts.push(now);
     return false;
+  }
+
+  /** Takes back the sign-in from `ip` let through at `time`, once its password proved right. */
+  function forgive(ip, time) {
+    for (const list of [attempts.get(ip), globalAttempts]) {
+      const index = list ? list.lastIndexOf(time) : -1;
+      if (index >= 0) list.splice(index, 1);
+    }
   }
 
   /**
@@ -277,12 +291,13 @@ async function createLanServer(options) {
           password.length > 1024
         )
           return reply(400, { error: 'Enter a user name and password.' });
-        // Every well-formed attempt counts against the limit, right or wrong.
-        if (limited(ip, clock()))
-          return reply(429, { error: 'Wait a minute before trying again.' });
         if (!isReady()) return reply(409, { error: 'The host is not sharing yet.' });
+        // Only failed sign-ins spend the limit; a right password is forgiven.
+        const time = clock();
+        if (limited(ip, time)) return reply(429, { error: 'Wait a minute before trying again.' });
         if (!(await authenticate(user, password)))
           return reply(401, { error: 'That user name or password is not correct.' });
+        forgive(ip, time);
         // Sharing may have stopped while the password was being checked.
         if (stopped) return reply(409, { error: 'The host stopped sharing.' });
         const ticket = crypto.randomBytes(32).toString('hex');
@@ -299,13 +314,15 @@ async function createLanServer(options) {
   /**
    * Serves a file the host offered (see sendFile()). An offered file goes once to the viewer it was
    * offered to, from that viewer's address, while it still holds the session: the first request
-   * for the address spends it, and a request that doesn't meet those conditions gets 404. The
-   * session hears how far it got, at most every 250 ms.
+   * for the address spends it, and a request that doesn't meet those conditions gets 404 and ends
+   * the offer, so sendFile() hears it at once instead of holding the next file back until OFFER_MS
+   * runs out. The session hears how far it got, at most every 250 ms.
    */
   function serveOffer(token, req, res, headers) {
     const offer = offers.get(token);
     offers.delete(token);
     if (!offer || viewer !== offer.ws || req.socket.remoteAddress !== offer.address) {
+      offer?.finish(Error('The file was asked for from another address. Send it again.'));
       res.writeHead(404, headers);
       return res.end('Not found');
     }
@@ -570,7 +587,7 @@ async function createLanServer(options) {
           ws.authed = true;
           viewer = ws;
           clearTimeout(timeout);
-          send(ws, { type: 'paired', hostName, platform });
+          send(ws, { type: 'paired', hostName, platform, declines: true });
           onPeer({ type: 'viewer-joined', id: ws.id, address: ip, replaced });
           return;
         }
@@ -653,6 +670,16 @@ async function createLanServer(options) {
               } catch {}
               if (ws.pendingUpload === transfer) ws.pendingUpload = null;
             });
+          return;
+        }
+        // An offered file the viewer can't take now, as when it is still saving the last one: the
+        // offer ends at once, and sendFile() says why.
+        if (message.type === 'download-decline') {
+          for (const offer of offers.values())
+            if (offer.ws === ws && offer.id === message.id)
+              offer.finish(
+                Error('The viewer is still saving another file. Send this one once it has.'),
+              );
           return;
         }
         throw Error('Unknown request.');
@@ -743,8 +770,8 @@ async function createLanServer(options) {
      * The viewer hears download-offer { id, name, size, path }, then download-progress { id,
      * received } while it downloads, and finally download-end { id }, or download-error { id,
      * message } when it fails. One file at a time: it rejects when there is no viewer, a file is
-     * already on its way, the file is too big, the viewer leaves, the download breaks, or it
-     * doesn't start within OFFER_MS.
+     * already on its way, the file is too big, the viewer leaves or declines it, the download
+     * breaks, or it doesn't start within OFFER_MS.
      */
     async sendFile(file) {
       const ws = viewer;

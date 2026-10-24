@@ -12,7 +12,7 @@ The home screen is the desktop app's pixel network house: discovered computers, 
 4. Sign in with that computer's account, the user name and password you use to log in to it. **Remember on this device** stores the password encrypted with an Android Keystore key. A remembered password that stops working is forgotten and the app asks again.
 5. Use the remote viewer's screen, audio, keyboard, clipboard, file, and full screen controls. **Disconnect** or Android's back button returns to the list. A dropped connection returns there too, with a dialog naming the computer.
 
-Certificate trust is stored for the exact IP address and port. A changed certificate requires verification again. **Settings** forgets saved computers, remembered sign-ins, and trusted certificates. DNS-SD advertisements are discovery hints, not trusted identities.
+Certificate trust is stored for the exact IP address and port. A changed certificate requires verification again. **Settings** lists saved computers, remembered sign-ins, trusted certificates and allowed computers, with their names and dates, to forget one, several or all. DNS-SD advertisements are discovery hints, not trusted identities.
 
 A computer announced at an address outside this device's network, such as a virtual machine behind its host's NAT, is dimmed and labeled **Another network**. Tapping it explains why it can't be reached. For a virtual machine, use a bridged network adapter so it gets an address on the same Wi-Fi.
 

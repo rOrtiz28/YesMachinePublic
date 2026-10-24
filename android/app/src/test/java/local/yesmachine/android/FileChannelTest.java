@@ -230,5 +230,6 @@ public class FileChannelTest {
         assertEquals("file", FileChannel.safeName(".."));
         assertEquals("file.hidden", FileChannel.safeName(".hidden"));
         assertEquals("file", FileChannel.safeName("  "));
+        assertEquals("a".repeat(179), FileChannel.safeName("a".repeat(179) + "\uD83D\uDE00.txt"));
     }
 }

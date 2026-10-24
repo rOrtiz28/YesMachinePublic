@@ -385,10 +385,7 @@ function renderDevices() {
     (items.some((item) => item.online)
       ? 'Double-click a computer to connect.'
       : 'Looking for computers sharing on your network…');
-  $('saved-summary').textContent = saved.length
-    ? `${saved.length} saved ${saved.length === 1 ? 'computer' : 'computers'}.`
-    : 'No saved computers yet.';
-  $('forget-all').disabled = !saved.length;
+  renderSavedList();
   if (signature === lastDevices) return;
   lastDevices = signature;
   const list = $('devices'),
@@ -418,9 +415,13 @@ function renderDevices() {
 // The same saved entry: the same address and port, and both discovered or both added by hand.
 const sameEntry = (a, b) => keyOf(a) === keyOf(b) && manualEntry(a) === manualEntry(b);
 
-/** Saves an entry, replacing the same one if it was already saved. */
+/**
+ * Saves an entry, replacing the same one if it was already saved. It keeps when it was first saved (since, in
+ * milliseconds), for Settings' list.
+ */
 function storeSaved(entry) {
-  saved = [...saved.filter((other) => !sameEntry(other, entry)), entry];
+  const since = saved.find((other) => sameEntry(other, entry))?.since || Date.now();
+  saved = [...saved.filter((other) => !sameEntry(other, entry)), { ...entry, since }];
   write('ym.saved', saved);
   renderDevices();
 }

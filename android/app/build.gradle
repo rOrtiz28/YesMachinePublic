@@ -8,8 +8,8 @@ android {
         applicationId 'local.yesmachine.android'
         minSdk 26
         targetSdk 34
-        versionCode 6
-        versionName '1.1.0'
+        versionCode 12
+        versionName '1.1.3'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     buildTypes { release { minifyEnabled false } }
@@ -27,7 +27,8 @@ dependencies {
 tasks.register('syncViewerAssets', Sync) {
     from('../../public') {
         include 'client.html', 'keys.js', 'style.css', 'pixel-icons.js', 'pixel-scene.js', 'pixel-house.js'
-        include 'pixel-day.js', 'pixel-home.js', 'setup-guides.js', 'theme.js', 'fonts/*.woff2'
+        include 'pixel-day.js', 'pixel-home.js', 'setup-guides.js', 'forget-lists.js', 'theme.js'
+        include 'fonts/*.woff2'
         include 'fonts/OFL-PixelifySans.txt', 'fonts/OFL-JetBrainsMono.txt'
         include 'client/common.js', 'client/cats.js', 'client/session.js', 'client/stream.js', 'client/sign-in.js'
         include 'client/screens.js', 'client/pointer.js', 'client/keyboard.js', 'client/clipboard.js'

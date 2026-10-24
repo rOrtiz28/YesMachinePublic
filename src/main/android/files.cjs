@@ -10,6 +10,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { cutText } = require('../network/security.cjs');
 const {
   createFileParser,
   fileOpen,
@@ -31,16 +32,16 @@ function freeBytes(directory) {
 
 /**
  * A name the device sent, made safe to use as a file name here: only its last part is kept, control characters and
- * the ones Windows doesn't allow in names become "_", and it is cut to 180 characters. An empty name, "." or ".."
- * becomes "file".
+ * the ones Windows doesn't allow in names become "_", and it is cut to 180 characters, never through an emoji. An
+ * empty name, "." or ".." becomes "file".
  */
 function safeName(name) {
-  const clean = String(name)
+  const last = String(name)
     .split(/[\\/]/)
     .pop()
     .replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '_')
-    .trim()
-    .slice(0, 180);
+    .trim();
+  const clean = cutText(last, 180);
   return clean && clean !== '.' && clean !== '..' ? clean : 'file';
 }
 

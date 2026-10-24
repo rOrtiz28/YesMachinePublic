@@ -365,7 +365,7 @@ public final class ShareActivity extends Activity {
      * Advanced mode: copies one file into a new outbox folder and marks it ready, then follows the marks the server
      * writes there (see the class comment) until it says sent or failed, and returns that. Gives up when the server
      * hasn't taken the file within 10 seconds, or when its progress hasn't moved for a minute. The folder is deleted
-     * at the end, however it ends.
+     * at the end, however it ends; on a cancel, only once the server has seen the cancel mark.
      */
     private FileChannel.Result throughOutbox(
         Uri uri,
@@ -406,7 +406,17 @@ public final class ShareActivity extends Activity {
             while (true) {
                 SystemClock.sleep(250);
                 if (cancel.get()) {
+                    // The server looks for the mark as it sends, and answers failed. Deleting the folder before it has
+                    // would hide the mark from it, and it would go on sending the whole file, so this waits for that
+                    // answer, for two seconds at most.
                     new File(folder, "cancel").createNewFile();
+                    for (
+                        int i = 0;
+                        i < 8 &&
+                        !new File(folder, "failed").exists() &&
+                        !new File(folder, "sent").exists();
+                        i++
+                    ) SystemClock.sleep(250);
                     return new FileChannel.Result(false, "Canceled.");
                 }
                 File sent = new File(folder, "sent"),

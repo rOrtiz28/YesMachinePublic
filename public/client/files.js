@@ -37,18 +37,18 @@ function rejectFileDone(message) {
 }
 
 /**
- * A file name as it may be shown and saved: without its folders and control characters, at most 180 characters,
- * and never empty, "." or "..".
+ * A file name as it may be shown and saved: without its folders and control characters, at most 180 characters
+ * (never through an emoji), and never empty, "." or "..".
  */
 function safeFilename(name) {
-  const result =
+  const last =
     typeof name === 'string'
       ? name
           .split(/[\\/]/)
           .pop()
           .replace(/[\u0000-\u001f\u007f]/g, '')
-          .slice(0, 180)
       : '';
+  const result = cutText(last, 180);
   return result && result !== '.' && result !== '..' ? result : 'download';
 }
 
@@ -204,9 +204,19 @@ function receiveDownload(message) {
       !/^\/download\/[0-9a-f]{48}$/.test(message.path)
     ) {
       showNotice(
-        'The incoming file was rejected because its size or transfer details are invalid.',
+        download
+          ? 'Finish saving the current file before receiving another one.'
+          : 'The incoming file was rejected because its size or transfer details are invalid.',
         true,
       );
+      // The computer would otherwise wait ten minutes for this file before it could send another.
+      if (hostDeclines && typeof message.id === 'string' && message.id.length <= 128) {
+        try {
+          wsSend({ type: 'download-decline', id: message.id });
+        } catch {
+          /* the session has closed, and the offer with it */
+        }
+      }
       return;
     }
     const row = document.createElement('div');

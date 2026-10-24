@@ -7,10 +7,12 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -19,8 +21,9 @@ import org.json.JSONObject;
  *
  * Passwords are encrypted with AES-256-GCM under a key kept in the Android Keystore, which never lets the key leave
  * the device. Each entry is a small JSON object in the app's private "remembered-sign-ins" preferences: the user name
- * in plain text, and the cipher's random IV and the encrypted password, both in Base64. An entry that can no longer be
- * decrypted is removed, and the person is asked to sign in again.
+ * in plain text, the cipher's random IV and the encrypted password, both in Base64, and for Settings' list the
+ * computer's name and the time it was saved (earlier versions kept neither). An entry that can no longer be decrypted
+ * is removed, and the person is asked to sign in again.
  *
  * The methods are synchronized because the home page's requests run on several threads at once.
  */
@@ -83,10 +86,10 @@ final class CredentialStore {
     // --- Remembered sign-ins ---
 
     /**
-     * Remembers a sign-in for a computer ("address:port"), replacing any earlier one. Returns false, and keeps nothing
-     * for that computer, when the password can't be encrypted.
+     * Remembers a sign-in for a computer ("address:port") named name, replacing any earlier one. Returns false, and
+     * keeps nothing for that computer, when the password can't be encrypted.
      */
-    synchronized boolean set(String host, String user, String password) {
+    synchronized boolean set(String host, String user, String password, String name) {
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             // The Keystore picks a new random IV for each encryption; it's stored with the entry.
@@ -95,7 +98,9 @@ final class CredentialStore {
             JSONObject entry = new JSONObject()
                 .put("user", user)
                 .put("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
-                .put("secret", Base64.encodeToString(secret, Base64.NO_WRAP));
+                .put("secret", Base64.encodeToString(secret, Base64.NO_WRAP))
+                .put("name", name)
+                .put("since", System.currentTimeMillis());
             preferences.edit().putString(host, entry.toString()).apply();
             return true;
         } catch (Exception error) {
@@ -148,5 +153,28 @@ final class CredentialStore {
     /** How many sign-ins are remembered, for Settings. */
     synchronized int count() {
         return preferences.getAll().size();
+    }
+
+    /**
+     * Settings' list: {key, user, name, since} for each sign-in, without decrypting anything. since is the time it was
+     * saved in milliseconds, or 0 when it isn't known.
+     */
+    synchronized JSONArray list() {
+        JSONArray list = new JSONArray();
+        for (Map.Entry<String, ?> each : preferences.getAll().entrySet()) {
+            try {
+                JSONObject entry = new JSONObject(String.valueOf(each.getValue()));
+                list.put(
+                    new JSONObject()
+                        .put("key", each.getKey())
+                        .put("user", entry.optString("user"))
+                        .put("name", entry.optString("name"))
+                        .put("since", entry.optLong("since"))
+                );
+            } catch (Exception unreadable) {
+                // An entry that isn't JSON can't sign in either; get() removes it when it's tried.
+            }
+        }
+        return list;
     }
 }

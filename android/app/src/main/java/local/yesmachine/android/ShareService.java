@@ -116,6 +116,7 @@ public final class ShareService extends Service {
         REPORT = 11,
         CHECK = 12;
     private static final int CLIPBOARD_LIMIT = 60000; // the most copied text that goes either way, in bytes
+    private static final int TEXT_LIMIT = 16_384; // the most text typed at once, in bytes
     // The status byte that answers the computer's hello.
     private static final byte DENIED = 0,
         ASKING = 1,
@@ -149,7 +150,8 @@ public final class ShareService extends Service {
     // they let it in, and always whether to let it in every time from now on.
     private volatile CountDownLatch answered;
     private volatile boolean allowed, always;
-    private SharedPreferences remembered; // the computers always allowed: certificate fingerprint to computer name
+    // The computers always allowed: certificate fingerprint to the computer's name, system and time (SettingsLists).
+    private SharedPreferences remembered;
     private volatile int width, height; // the size of the screen being streamed, in pixels
 
     // --- Service lifecycle ---
@@ -483,7 +485,7 @@ public final class ShareService extends Service {
                 }
                 if (always && !fingerprint.isEmpty()) remembered
                     .edit()
-                    .putString(fingerprint, name)
+                    .putString(fingerprint, SettingsLists.kept(name, system))
                     .apply();
             }
             out.writeByte(ALLOWED);
@@ -879,7 +881,7 @@ public final class ShareService extends Service {
                 if (control != null) control.key(action, code, meta);
             } else if (type == TEXT) {
                 int length = in.readInt();
-                if (length < 0 || length > 16_384) throw new IOException("Text too long");
+                if (length < 0 || length > TEXT_LIMIT) throw new IOException("Text too long");
                 byte[] bytes = new byte[length];
                 in.readFully(bytes);
                 if (control != null) control.text(new String(bytes, StandardCharsets.UTF_8));

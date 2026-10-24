@@ -15,6 +15,7 @@
     <script defer src="/pixel-day.js"></script>
     <script defer src="/pixel-home.js"></script>
     <script defer src="/setup-guides.js"></script>
+    <script defer src="/forget-lists.js"></script>
     <!-- The home screen's own scripts, beside this page. They share one global scope and run in this order; all but
          start.js only declare things, and start.js starts the screen. -->
     <script defer src="/bridge.js"></script>
@@ -333,37 +334,41 @@
                 <span class="icon" id="mode-toggle-icon" data-icon="chevron-right"></span>
               </button>
             </div>
-            <!-- The computers that may connect in general mode without asking (general-mode.js). Forget all asks
-                 for a second tap, as do the other Forget all buttons. -->
-            <div class="setting">
-              <div>
-                <h2>Allowed computers</h2>
-                <p id="allowed-summary">No computers are always allowed.</p>
+            <!-- The computers that may connect in general mode without asking (general-mode.js), then the saved
+                 computers, remembered sign-ins and trusted certificates (settings.js): how many there are, and a
+                 list that a tap on the row opens, to forget one, several or all (public/forget-lists.js, which adds
+                 the list to each row). -->
+            <div class="setting list-setting" id="allowed-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Allowed computers</h2>
+                  <p class="list-summary">No computers are always allowed yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-allowed">Forget all</button>
             </div>
-            <!-- Saved computers, remembered sign-ins and trusted certificates: how many there are, and Forget all.
-                 devices.js counts the saved computers, settings.js the others. -->
-            <div class="setting">
-              <div>
-                <h2>Saved computers</h2>
-                <p id="saved-summary">No saved computers yet.</p>
+            <div class="setting list-setting" id="saved-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Saved computers</h2>
+                  <p class="list-summary">No saved computers yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-all">Forget all</button>
             </div>
-            <div class="setting">
-              <div>
-                <h2>Remembered sign-ins</h2>
-                <p id="credentials-summary">No remembered sign-ins yet.</p>
+            <div class="setting list-setting" id="credentials-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Remembered sign-ins</h2>
+                  <p class="list-summary">No remembered sign-ins yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-credentials">Forget all</button>
             </div>
-            <div class="setting">
-              <div>
-                <h2>Trusted certificates</h2>
-                <p id="trusted-summary">No trusted computers yet.</p>
+            <div class="setting list-setting" id="trusted-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Trusted certificates</h2>
+                  <p class="list-summary">No trusted computers yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-trusted">Forget all</button>
             </div>
             <!-- A button for each guide, which opens the setup guide dialog on it (public/setup-guides.js). -->
             <div class="setting">

@@ -2,6 +2,7 @@
 // General mode: this device shares its screen with a computer on the network, which touches and types through
 // Accessibility. Java pushes the state whenever it changes: the mode, Accessibility, sharing, and a computer waiting
 // for an answer, which the person gives here or in the notification. Closing the question without an answer denies it.
+// Settings lists the computers that are always allowed, to forget one, several or all (public/forget-lists.js).
 const SUMMARIES = {
   general: 'Works over Wi-Fi with Android’s own permissions. Nothing else to set up.',
   advanced: 'The fastest, through Android’s developer options, by cable or Wi-Fi.',
@@ -10,6 +11,9 @@ let control = null,
   instructions = false,
   shownRequest = '',
   openRequest = '';
+// The list of computers that are always allowed, and how many it was last read with.
+let allowedList = null,
+  shownAllowed = -1;
 
 /** A bold piece of text, for names inside a sentence. */
 function bold(text) {
@@ -81,11 +85,11 @@ function renderControl(state) {
   $('accessibility-text').textContent = state.accessibility
     ? 'Yes Machine is allowed in Accessibility.'
     : 'Yes Machine isn’t allowed in Accessibility yet.';
-  const allowed = state.allowedComputers | 0;
-  $('allowed-summary').textContent = allowed
-    ? `${allowed} always allowed ${allowed === 1 ? 'computer' : 'computers'}. Any other computer asks first.`
-    : 'No computers are always allowed yet.';
-  $('forget-allowed').disabled = !allowed;
+  // The list of computers that are always allowed is read again when their number changes.
+  if ((state.allowedComputers | 0) !== shownAllowed) {
+    shownAllowed = state.allowedComputers | 0;
+    renderAllowed();
+  }
   PixelIcons.render($('tablet-card'));
   PixelIcons.render($('control-setting'));
   // The question for a computer that wants to control this device, once per request.
@@ -103,6 +107,21 @@ function renderControl(state) {
     openRequest = '';
     if (dialog.open) dialog.close();
   }
+}
+
+/** The list of computers that are always allowed, which Java keeps by their certificate's fingerprint. */
+async function renderAllowed() {
+  try {
+    const { list } = await api.allowedList();
+    allowedList?.show(
+      list.map(({ key, name, system, since }) => ({
+        id: key,
+        name: name || 'A computer',
+        system,
+        since,
+      })),
+    );
+  } catch {}
 }
 
 /** The answer to the computer asking, from the dialog: allow it (and always, when the box is ticked) or not. */
@@ -126,9 +145,11 @@ async function chooseMode(mode) {
 /** Connects the mode switch, the This device card's buttons and the question's dialog. Called once by start.js. */
 function setUpGeneralMode() {
   api.onControl(renderControl);
-  twoStep($('forget-allowed'), async () => {
-    renderControl(await api.forgetComputers());
-    notice('Allowed computers removed. Each one asks again before it connects.');
+  allowedList = ForgetLists.create($('allowed-setting'), {
+    kind: 'allowed',
+    press: 'Tap',
+    notice,
+    forget: (gone) => forgetThrough(api.forgetComputers, renderAllowed, gone),
   });
   $('mode-general').onclick = () => {
     if (control?.mode === 'advanced') chooseMode('general');

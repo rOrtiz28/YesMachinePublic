@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="../../../src/windows/host/host.css" />
+    <!-- The Android app loads home.css after host.css (lists.js adds it for ?app=android). -->
+    <link rel="stylesheet" href="lists.css" />
+    <script src="../../../public/theme.js"></script>
+    <script src="../../../public/pixel-icons.js"></script>
+    <script src="lists.js" defer></script>
+  </head>
+  <body>
+    <main class="frame-page">
+      <section class="view settings-view" aria-labelledby="settings-title">
+        <h1 id="settings-title" class="page-title">Settings</h1>
+        <!-- lists.js fills this with the rows of the app the page is for. -->
+        <div class="settings" id="settings"></div>
+      </section>
+    </main>
+    <p id="message" class="toast" role="status" aria-live="polite"></p>
+  </body>
+</html>

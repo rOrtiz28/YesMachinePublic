@@ -82,7 +82,7 @@ The viewer windows for other computers have no bridge at all: they are the brows
 | `layout.js` | Fitting the screen to the window, Hide bars and full screen, and the tool drawer. |
 | `start.js` | Starts the page. |
 
-The rest of `public/` is shared with the desktop app and the Android app: the pixel art (`pixel-icons.js`, `pixel-scene.js` for the rooftop cat, `pixel-house.js` and `pixel-day.js` for the house by night and by day, `pixel-home.js` for the walk between them), `keys.js` (what keys a viewer sends, such as ⌘ shortcuts from a Mac to Windows), `theme.js` (applies the saved light or dark mode before a page draws), `setup-guides.js`, and the bundled fonts.
+The rest of `public/` is shared with the desktop app and the Android app: the pixel art (`pixel-icons.js`, `pixel-scene.js` for the rooftop cat, `pixel-house.js` and `pixel-day.js` for the house by night and by day, `pixel-home.js` for the walk between them), `keys.js` (what keys a viewer sends, such as ⌘ shortcuts from a Mac to Windows), `theme.js` (applies the saved light or dark mode before a page draws), `setup-guides.js`, `forget-lists.js` (Settings' lists of saved computers, remembered sign-ins, trusted certificates and allowed computers, where one, several or all are forgotten), and the bundled fonts.
 
 ## Android devices
 
@@ -105,6 +105,8 @@ The app is one activity with two web pages, plus the services general mode needs
 | `ShareService`, `ShareSound`, `ShareState`, `ControlService`, `DeviceIdentity` | General mode: sharing the screen and its sound, its state, the accessibility service that touches and types, and the device's own TLS identity. |
 | `FileChannel`, `Downloads`, `FileReceiver`, `ShareActivity` | Files: general mode's file connection, where received files go and their notification, advanced mode's arrivals, and Yes Machine in Android's share sheet. |
 | `AdvancedSession` | Whether a computer is connected in advanced mode. |
+| `Text` | Cutting computers' labels and received file names to a length, never through an emoji. |
+| `SettingsLists` | What Settings' lists show for trusted certificates and allowed computers: each one's computer name, system and date. |
 
 The pages:
 

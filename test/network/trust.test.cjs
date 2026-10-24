@@ -1,8 +1,8 @@
 'use strict';
 
-// Tests the store of certificates the user approved (src/main/network/trust.cjs). It writes real files in a temporary
-// folder. The fingerprints are made up, in the format Node writes, except in the last test, which makes a real
-// self-signed certificate.
+// Tests the store of certificates the user approved (src/main/network/trust.cjs), with the names and times Settings'
+// list shows. It writes real files in a temporary folder. The fingerprints are made up, in the format Node writes,
+// except in the last test, which makes a real self-signed certificate.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,6 +40,37 @@ test('approved certificates persist privately across restarts', (t) => {
   if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   reloaded.clear();
   assert.equal(createTrustStore(file).count(), 0);
+});
+
+test("Settings' list has each approval's name, system and time, and forgets only those chosen", (t) => {
+  const file = tempFile(t),
+    times = [1_760_000_000_000, 1_760_100_000_000, 1_760_200_000_000];
+  const store = createTrustStore(file, () => times.shift());
+  store.set('192.168.1.60:4777', A, { name: 'Office PC', system: 'Windows 11' });
+  store.set('192.168.1.61:4777', B, { name: 'Lab\nMac', system: 7 });
+  // Approving the same certificate again keeps its first time; a new one starts again.
+  store.set('192.168.1.60:4777', A, { name: 'Office PC', system: 'Windows 11' });
+  assert.deepEqual(createTrustStore(file).list(), [
+    { key: '192.168.1.60:4777', name: 'Office PC', system: 'Windows 11', since: 1_760_000_000_000 },
+    { key: '192.168.1.61:4777', name: 'Lab Mac', system: '', since: 1_760_100_000_000 },
+  ]);
+  store.forget(['192.168.1.61:4777', '10.0.0.9:4777']);
+  assert.deepEqual(
+    createTrustStore(file)
+      .list()
+      .map((entry) => entry.key),
+    ['192.168.1.60:4777'],
+  );
+});
+
+test('approvals saved by earlier versions, a bare fingerprint, load without a name or time', (t) => {
+  const file = tempFile(t);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ '192.168.1.60:4777': A }));
+  const store = createTrustStore(file);
+  assert.equal(store.get('192.168.1.60:4777'), A);
+  assert.equal(store.allows('192.168.1.60', A), true);
+  assert.deepEqual(store.list(), [{ key: '192.168.1.60:4777', name: '', system: '', since: 0 }]);
 });
 
 test('the viewer engine accepts only an approved fingerprint for that address', (t) => {

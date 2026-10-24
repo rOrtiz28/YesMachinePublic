@@ -155,7 +155,7 @@ function awaitAnswer(socket, device, onAsking, signal) {
  *
  * Options:
  * - identityFile: where this computer's certificate is kept.
- * - store: the approved certificates (network/trust.cjs), with get(key) and set(key, fingerprint).
+ * - store: the approved certificates (network/trust.cjs), with get(key) and set(key, fingerprint, details).
  * - name and system: how this computer introduces itself to devices.
  * - connectTls: tls.connect, unless a test passes its own.
  *
@@ -241,14 +241,17 @@ function createAndroidShare({ identityFile, store, name, system, connectTls = tl
   }
 
   /**
-   * Approves the device's certificate. Only a fingerprint this process just saw can be approved, never one the page
-   * supplies.
+   * Approves the device's certificate, with its name and system for Settings' list. Only a fingerprint this process
+   * just saw can be approved, never one the page supplies.
    */
   function trust(id) {
     const device = find(id),
       fingerprint = seen.get(id);
     if (!fingerprint) throw Error('Check the device again before trusting it.');
-    store.set(keyOf(device), fingerprint);
+    store.set(keyOf(device), fingerprint, {
+      name: device.name,
+      system: device.system || 'Android',
+    });
   }
 
   /**

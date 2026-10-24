@@ -247,8 +247,8 @@ function createAndroid({
   /**
    * Starts a session with a device, over the cable or Wi-Fi as asked when the device has both, and otherwise the way
    * it has. Refuses a device whose app is in general mode. Pushes the stream server, starts it on a new socket name
-   * with the bitrate, waits up to eight seconds for it to print "ready", forwards a free local port to its socket and
-   * connects.
+   * with the bitrate and a new secret, waits up to eight seconds for it to print "ready", forwards a free local port to
+   * its socket and connects, sending the secret first on every connection.
    *
    * Resolves with {device, socket, close, openFiles}: socket carries the stream (protocol.cjs), close() ends the
    * session on both sides, and openFiles() opens a file connection to the same server (files.cjs).
@@ -263,18 +263,23 @@ function createAndroid({
       throw Error('The Android stream server is missing from this build.');
     await adb(device.serial, 'push', jarPath, REMOTE);
     // app_process runs the server's main() in Android's runtime, as the shell user. It listens on a local socket
-    // with a new random name for each session.
+    // with a new random name for each session. Every connection to it starts with the session's secret, so nothing
+    // else on the device can pass for this computer, even if it finds the socket.
     const name = `yes-machine-${crypto.randomBytes(6).toString('hex')}`;
-    const server = start(
-      adbPath,
-      [
-        '-s',
-        device.serial,
-        'shell',
-        `CLASSPATH=${REMOTE} app_process / local.yesmachine.stream.Server ${name} ${bitRate}`,
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
-    );
+    const secret = crypto.randomBytes(16);
+    const command = [
+      `CLASSPATH=${REMOTE}`,
+      'app_process',
+      '/',
+      'local.yesmachine.stream.Server',
+      name,
+      bitRate,
+      secret.toString('hex'),
+    ].join(' ');
+    const server = start(adbPath, ['-s', device.serial, 'shell', command], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
     // Everything the server prints is kept: it says "ready" once it listens, or explains why it didn't start.
     let output = '',
       failed = false;
@@ -315,6 +320,7 @@ function createAndroid({
       server.kill();
       throw error;
     });
+    socket.write(secret);
     socket.on('error', () => {}); // a broken connection also closes, and closing ends the session
     let closed = false;
     const others = new Set();
@@ -340,6 +346,7 @@ function createAndroid({
         const files = net.connect(port, '127.0.0.1');
         files.once('error', reject);
         files.once('connect', () => {
+          files.write(secret);
           files.removeListener('error', reject);
           files.on('error', () => {});
           others.add(files);

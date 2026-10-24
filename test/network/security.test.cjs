@@ -1,13 +1,17 @@
 'use strict';
 
 // Tests the checks that keep Yes Machine on the local network (src/main/network/security.cjs): which addresses count
-// as private, safe names for received files, and the filters on WebRTC signaling. They are plain functions, tested
-// with sample addresses, file names, ICE candidates and session descriptions.
+// as private, cutting names, safe names for received files, and the filters on WebRTC signaling. They are plain
+// functions, tested with sample addresses, names, file names, ICE candidates and session descriptions. The viewer
+// page has its own copy of cutText(), which is checked against this one.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   isPrivateAddress,
+  cutText,
   safeFilename,
   candidateAllowed,
   validSignal,
@@ -72,6 +76,17 @@ test('filenames cannot retain path traversal, separators, controls, or dangerous
     assert.doesNotMatch(safeFilename(name), /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i);
   }
   assert.equal(safeFilename('ordinary document.pdf'), 'ordinary document.pdf');
+});
+
+test('a name cut to its length never ends in half an emoji', () => {
+  // 😀 is two UTF-16 units, so a cut after 180 units can land between them.
+  assert.equal(cutText('a'.repeat(179) + '😀b', 180), 'a'.repeat(179));
+  assert.equal(cutText('a'.repeat(178) + '😀b', 180), 'a'.repeat(178) + '😀');
+  assert.equal(cutText('Alejandro’s Mac 🍎', 64), 'Alejandro’s Mac 🍎');
+  assert.equal(safeFilename('a'.repeat(179) + '😀.txt'), 'a'.repeat(179));
+  // The viewer page can't load this module, so it has its own copy of the same function.
+  const viewer = fs.readFileSync(path.join(__dirname, '../../public/client/common.js'), 'utf8');
+  assert.ok(viewer.includes(cutText.toString()), 'public/client/common.js has the same cutText()');
 });
 
 test('ICE permits direct private host and mDNS candidates only', () => {

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Choosing What to Forget</title>
+    <style>
+      /* Prototype only: Settings in the computer's main window and in the Android app, where every row that forgets
+         something lists each computer with its name and date, to forget one, several or all. Both frames
+         are trusted-lists/settings.html in the app's own styles; the lists in them work. */
+      @font-face {
+        font-family: 'Pixelify Sans';
+        src: url('../../public/fonts/pixelify-sans-latin-700-normal.woff2') format('woff2');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url('../../public/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.5 'JetBrains Mono',
+          ui-monospace,
+          monospace;
+        background: #0d1115;
+        color: #e6ede8;
+      }
+      body.day {
+        background: #eef2f5;
+        color: #1d2730;
+      }
+      .page {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px max(16px, 3vw) 64px;
+        display: grid;
+        gap: 22px;
+      }
+      h1 {
+        margin: 0;
+        font:
+          700 clamp(30px, 4vw, 44px)/1.1 'Pixelify Sans',
+          monospace;
+      }
+      h2 {
+        margin: 14px 0 0;
+        font:
+          700 20px/1.2 'Pixelify Sans',
+          monospace;
+      }
+      .intro p,
+      .lead {
+        margin: 10px 0 0;
+        max-width: 80ch;
+        opacity: 0.78;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+      .controls span {
+        margin-right: 6px;
+        opacity: 0.7;
+      }
+      .controls button {
+        padding: 9px 14px;
+        border: 1px solid #2b3741;
+        border-radius: 8px;
+        background: #151d23;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      body.day .controls button {
+        border-color: #c4ced7;
+        background: #fff;
+      }
+      .controls button[aria-pressed='true'] {
+        background: #8feba7 !important;
+        border-color: #8feba7 !important;
+        color: #0f2416;
+      }
+      .frame {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #1f2a31;
+        border-radius: 14px;
+      }
+      body.day .frame {
+        border-color: #d7dee4;
+      }
+      .frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 0;
+        transform-origin: 0 0;
+      }
+      .bezel {
+        padding: clamp(10px, 2vw, 22px);
+        border-radius: clamp(18px, 3vw, 34px);
+        background: #1a2229;
+        box-shadow:
+          0 0 0 1px #2b3741,
+          0 18px 40px #0008;
+      }
+      .bezel.upright {
+        max-width: 560px;
+      }
+      .bezel .frame {
+        border: 0;
+        border-radius: 6px;
+      }
+      .notes {
+        display: grid;
+        gap: 10px;
+        max-width: 84ch;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        opacity: 0.85;
+      }
+      .notes li {
+        position: relative;
+        padding-left: 18px;
+      }
+      .notes li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.65em;
+        width: 6px;
+        height: 6px;
+        background: #3fbf6a;
+      }
+      .notes b {
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <h1>Choosing What to Forget</h1>
+        <p>
+          Every Settings row that forgets something now opens into a list: saved computers,
+          remembered sign-ins, trusted certificates, and on Android the computers that are always
+          allowed. A click or tap anywhere on a row grows it to show each computer with its name and
+          a date. Check one, several or Select all, then Forget. Everything in the frames works; the
+          buttons above them jump to each state.
+        </p>
+      </header>
+      <div class="controls" data-theme-controls>
+        <span>Colors</span>
+        <button type="button" data-theme="night" aria-pressed="true">Night</button>
+        <button type="button" data-theme="day" aria-pressed="false">Day</button>
+      </div>
+
+      <h2>The computer's Settings</h2>
+      <p class="lead">The three rows that had Forget all, each with its list.</p>
+      <div class="controls" data-pick data-for="desktop">
+        <span>List</span>
+        <button type="button" data-list="saved" aria-pressed="false">Saved computers</button>
+        <button type="button" data-list="credentials" aria-pressed="false">
+          Remembered sign-ins
+        </button>
+        <button type="button" data-list="trusted" aria-pressed="true">Trusted certificates</button>
+      </div>
+      <div class="controls" data-states data-for="desktop">
+        <span>State</span>
+        <button type="button" data-state="closed" aria-pressed="true">Closed</button>
+        <button type="button" data-state="open" aria-pressed="false">Open</button>
+        <button type="button" data-state="some" aria-pressed="false">Two checked</button>
+        <button type="button" data-state="all" aria-pressed="false">Select all</button>
+        <button type="button" data-state="confirm" aria-pressed="false">Asking again</button>
+        <button type="button" data-state="after" aria-pressed="false">After Forget</button>
+        <button type="button" data-state="empty" aria-pressed="false">None left</button>
+      </div>
+      <div class="frame" data-width="1240" data-height="900">
+        <iframe
+          id="desktop"
+          title="The computer's Settings"
+          src="trusted-lists/settings.html?app=desktop"
+        ></iframe>
+      </div>
+
+      <h2>The Android app's Settings</h2>
+      <p class="lead">
+        The same four lists, with Allowed computers first as today, and bigger rows for fingers. The
+        page scrolls inside the frame.
+      </p>
+      <div class="controls" data-pick data-for="android">
+        <span>List</span>
+        <button type="button" data-list="allowed" aria-pressed="true">Allowed computers</button>
+        <button type="button" data-list="saved" aria-pressed="false">Saved computers</button>
+        <button type="button" data-list="credentials" aria-pressed="false">
+          Remembered sign-ins
+        </button>
+        <button type="button" data-list="trusted" aria-pressed="false">Trusted certificates</button>
+      </div>
+      <div class="controls" data-states data-for="android">
+        <span>State</span>
+        <button type="button" data-state="closed" aria-pressed="true">Closed</button>
+        <button type="button" data-state="open" aria-pressed="false">Open</button>
+        <button type="button" data-state="some" aria-pressed="false">Two checked</button>
+        <button type="button" data-state="all" aria-pressed="false">Select all</button>
+        <button type="button" data-state="confirm" aria-pressed="false">Asking again</button>
+        <button type="button" data-state="after" aria-pressed="false">After Forget</button>
+        <button type="button" data-state="empty" aria-pressed="false">None left</button>
+      </div>
+      <div class="controls" data-orientation>
+        <span>Tablet</span>
+        <button type="button" data-size="1280x800" aria-pressed="true">Sideways</button>
+        <button type="button" data-size="800x1280" aria-pressed="false">Upright</button>
+      </div>
+      <div class="bezel" id="bezel">
+        <div class="frame" data-width="1280" data-height="800">
+          <iframe
+            id="android"
+            title="The Android app's Settings"
+            src="trusted-lists/settings.html?app=android"
+          ></iframe>
+        </div>
+      </div>
+
+      <h2>How it works</h2>
+      <ul class="notes">
+        <li>
+          <b>It grows where it is.</b>
+          A click or tap anywhere on a row's top opens its list below, in four steps like the app's
+          other animations, and the computers pop in one after another, as new cards do on the
+          house. The same again closes it. Rows with nothing to list stay closed.
+        </li>
+        <li>
+          <b>A name and a date for each.</b>
+          From now on the apps keep the day each computer was saved, its sign-in remembered, its
+          certificate trusted, or it was allowed, and the name and system it had then. A remembered
+          sign-in also shows its account. Newest first.
+        </li>
+        <li>
+          <b>Ones from before this version</b>
+          have no date, and say "Date not recorded". A trusted certificate whose name isn't known
+          shows its address instead; the app looks for the name among the saved and discovered
+          computers first.
+        </li>
+        <li>
+          <b>Forget asks twice,</b>
+          as Forget all does today: the first click or tap asks again for four seconds. It names how
+          many it forgets, and the notice after says what happens next: a forgotten certificate asks
+          to be verified again, a forgotten sign-in asks for the password, and a forgotten allowed
+          computer asks before it takes control.
+        </li>
+      </ul>
+    </main>
+    <script>
+      'use strict';
+      const frames = [...document.querySelectorAll('.frame')];
+      function scale() {
+        for (const frame of frames) {
+          const width = +frame.dataset.width,
+            height = +frame.dataset.height,
+            s = frame.clientWidth / width,
+            iframe = frame.querySelector('iframe');
+          frame.style.height = `${Math.round(height * s)}px`;
+          Object.assign(iframe.style, {
+            width: `${width}px`,
+            height: `${height}px`,
+            transform: `scale(${s})`,
+          });
+        }
+      }
+      new ResizeObserver(scale).observe(document.querySelector('.page'));
+      // Presses one button of a group and returns it.
+      function pressOne(group, event) {
+        const button = event.target.closest('button');
+        if (!button) return null;
+        for (const each of group.querySelectorAll('button'))
+          each.setAttribute('aria-pressed', String(each === button));
+        return button;
+      }
+      // Each frame's List buttons choose the list that its State buttons put in a state.
+      for (const pick of document.querySelectorAll('[data-pick]'))
+        pick.addEventListener('click', (event) => pressOne(pick, event));
+      for (const states of document.querySelectorAll('[data-states]'))
+        states.addEventListener('click', (event) => {
+          const button = pressOne(states, event),
+            frame = states.dataset.for;
+          if (!button) return;
+          const list = document.querySelector(
+            `[data-pick][data-for="${frame}"] [aria-pressed="true"]`,
+          ).dataset.list;
+          document
+            .getElementById(frame)
+            .contentWindow.postMessage({ list, state: button.dataset.state }, '*');
+        });
+      const themes = document.querySelector('[data-theme-controls]');
+      themes.addEventListener('click', (event) => {
+        const button = pressOne(themes, event);
+        if (!button) return;
+        document.body.classList.toggle('day', button.dataset.theme === 'day');
+        for (const frame of document.querySelectorAll('iframe'))
+          frame.contentWindow.postMessage({ theme: button.dataset.theme }, '*');
+      });
+      const orientation = document.querySelector('[data-orientation]');
+      orientation.addEventListener('click', (event) => {
+        const button = pressOne(orientation, event);
+        if (!button) return;
+        const [width, height] = button.dataset.size.split('x'),
+          frame = document.querySelector('#bezel .frame');
+        frame.dataset.width = width;
+        frame.dataset.height = height;
+        document.getElementById('bezel').classList.toggle('upright', +width < +height);
+        scale();
+      });
+    </script>
+  </body>
+</html>

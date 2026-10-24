@@ -3,12 +3,14 @@
 // - isPrivateAddress(): whether an address belongs to a private network or to this computer.
 // - localAddresses(): this computer's own private IPv4 addresses, by network adapter.
 // - safeFilename(): a received file's name, made safe to save on any operating system.
+// - cutText(): text cut to a length without leaving half an emoji, for names.
 // - candidateAllowed() and validSignal(): WebRTC signaling filters that allow only direct
 //   connections between private addresses, never public addresses or relays.
 //
 // sharing/server.cjs applies them to every request and signaling message. discovery.cjs,
 // networks.cjs, probe.cjs and trust.cjs in this folder use the address checks, and main.cjs checks
-// the network chosen for sharing against localAddresses().
+// the network chosen for sharing against localAddresses(). main.cjs, sharing/screens.cjs and
+// android/files.cjs cut names with cutText().
 const net = require('node:net');
 const os = require('node:os');
 
@@ -48,22 +50,30 @@ function localAddresses() {
   );
 }
 
+// --- Names ---
+
+/**
+ * `text` cut to at most `length` UTF-16 units, as slice() counts, without leaving half a character
+ * behind. Most emoji, and every other character outside the Basic Multilingual Plane, take two
+ * units (a surrogate pair); a cut between the two drops the first.
+ */
+function cutText(text, length) {
+  return text.slice(0, length).replace(/[\ud800-\udbff]$/, '');
+}
+
 // --- Received file names ---
 
 /**
  * Makes the name of a file from another device safe to save here. Characters Windows forbids
  * (<>:"/\|?*), control characters and DEL become _, leading dots (a hidden name, or "..") become
- * one _, the name is cut to 180 characters and loses trailing dots and spaces (which Windows
- * drops), and Windows device names get a leading _. Anything that isn't a name, or ends up empty,
- * becomes "received-file".
+ * one _, the name is cut to 180 characters (never through an emoji) and loses trailing dots and
+ * spaces (which Windows drops), and Windows device names get a leading _. Anything that isn't a
+ * name, or ends up empty, becomes "received-file".
  */
 function safeFilename(value) {
   if (typeof value !== 'string') return 'received-file';
-  let name = value
-    .replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, '_')
-    .replace(/^\.+/, '_')
-    .slice(0, 180)
-    .replace(/[. ]+$/, '');
+  const clean = value.replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, '_').replace(/^\.+/, '_');
+  let name = cutText(clean, 180).replace(/[. ]+$/, '');
   // Windows treats device basenames as special even when followed by an extension (CON.txt is
   // still the console), and it counts the superscript digits ¹, ² and ³ in COM and LPT names.
   if (
@@ -130,4 +140,11 @@ function validSignal(message) {
     .every(candidateAllowed);
 }
 
-module.exports = { isPrivateAddress, localAddresses, safeFilename, candidateAllowed, validSignal };
+module.exports = {
+  isPrivateAddress,
+  localAddresses,
+  cutText,
+  safeFilename,
+  candidateAllowed,
+  validSignal,
+};

@@ -4,7 +4,8 @@
 // stream and read the same input. The device sends a header and then typed messages; the computer sends input.
 // Everything is big-endian. The computer checks both ways: what the device sends must parse, and what the viewer page
 // asks to send must be in range. windows.cjs uses the stream and input parts (and fileHello), and files.cjs the rest
-// of the file connection's.
+// of the file connection's. In advanced mode, each connection first carries the session's secret (advanced-mode.cjs),
+// before any of this.
 //
 // The stream, device to computer. First the header: "YMS1", the width and height (4 bytes each), the length of the
 // encoder's name (4 bytes, at most 256) and the name. Then messages, each starting with its type byte:
@@ -21,7 +22,7 @@
 //   4 touch             action (1 byte: 0 down, 1 up, 2 move), then x and y as fractions of the screen (4-byte floats)
 //   6 scroll            x, y, horizontal and vertical amounts (4-byte floats)
 //   7 key               action (1 byte: 0 down, 1 up), Android key code and meta state (4 bytes each)
-//   8 text              length (4 bytes), then UTF-8 text for the device to type
+//   8 text              length (4 bytes, at most 16,384), then UTF-8 text for the device to type
 //   9 keyboard          1 lets the device show its own on-screen keyboard, 0 hides it
 //   10 clipboard        length (4 bytes), then text copied on the computer (UTF-8)
 //   11 clipboard-report 1 or 0: whether the device should report what is copied on it

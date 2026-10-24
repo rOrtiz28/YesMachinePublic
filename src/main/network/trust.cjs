@@ -6,9 +6,13 @@
 // connection made from here: computers opened in viewer windows (viewing/viewer.cjs) and Android
 // devices sharing in general mode (android/general-mode.cjs). Both approve only a fingerprint they
 // just saw in their own TLS handshake, never one from discovery or from a page.
+//
+// With each approval the store keeps the name and system the computer or device had then, and the
+// time, for Settings' list. Earlier versions kept a bare fingerprint, which loads without a name
+// or time.
 const crypto = require('node:crypto');
 const net = require('node:net');
-const { isPrivateAddress } = require('./security.cjs');
+const { isPrivateAddress, cutText } = require('./security.cjs');
 const { readJson, writePrivateJson } = require('../system/private-json.cjs');
 
 // A SHA-256 fingerprint as Node writes it: 32 uppercase hex bytes separated by colons.
@@ -47,26 +51,64 @@ function fingerprintOf(pem) {
   }
 }
 
+/** A name or system from a page or a file: plain text without control characters, cut short. */
+function label(value, length) {
+  return typeof value === 'string'
+    ? cutText(value.replace(/[\x00-\x1f\x7f]/g, ' ').trim(), length)
+    : '';
+}
+
+/**
+ * An approval as it is kept: { fingerprint, name, system, since }, where since is the time it was
+ * approved in milliseconds, or 0 when it isn't known. `value` is one from the file: an object, or a
+ * bare fingerprint from before names and times were kept. Returns null for anything else.
+ */
+function approvalOf(value) {
+  const fingerprint = typeof value === 'string' ? value : value?.fingerprint;
+  if (!FINGERPRINT.test(fingerprint)) return null;
+  const since = Number(value?.since);
+  return {
+    fingerprint,
+    name: label(value?.name, 64),
+    system: label(value?.system, 48),
+    since: Number.isSafeInteger(since) && since > 0 ? since : 0,
+  };
+}
+
 /**
  * Opens the store saved in `file`; entries that aren't a valid key and fingerprint are dropped as
- * it loads. Every change saves the whole store privately (system/private-json.cjs). Returns:
+ * it loads. Every change saves the whole store privately (system/private-json.cjs). `now` gives the
+ * time, unless a test passes its own. Returns:
  * - get(key): the fingerprint approved for "address:port", or null.
- * - set(key, fingerprint): approves it; throws when the key or the fingerprint isn't valid.
+ * - set(key, fingerprint, { name, system }): approves it, with the computer's name and system;
+ *   throws when the key or the fingerprint isn't valid. Approving the same fingerprint again keeps
+ *   its first time.
+ * - list(): every approval, as { key, name, system, since }.
+ * - forget(keys): forgets the approvals for those "address:port" keys.
  * - clear(): forgets every approval.
  * - count(): how many there are.
  * - allows(hostname, fingerprint): whether a viewer window may accept that certificate.
  */
-function createTrustStore(file) {
+function createTrustStore(file, now = Date.now) {
   let pins = {};
-  for (const [key, value] of Object.entries(readJson(file, {}) || {}))
-    if (fromKey(key) && FINGERPRINT.test(value)) pins[key] = value;
+  for (const [key, value] of Object.entries(readJson(file, {}) || {})) {
+    const approval = approvalOf(value);
+    if (fromKey(key) && approval) pins[key] = approval;
+  }
   const save = () => writePrivateJson(file, pins);
   return {
-    get: (key) => pins[key] || null,
-    set(key, fingerprint) {
+    get: (key) => pins[key]?.fingerprint || null,
+    set(key, fingerprint, { name, system } = {}) {
       if (!fromKey(key) || !FINGERPRINT.test(fingerprint))
         throw Error('That certificate cannot be trusted.');
-      pins[key] = fingerprint;
+      const before = pins[key]?.fingerprint === fingerprint ? pins[key].since : 0;
+      pins[key] = approvalOf({ fingerprint, name, system, since: before || now() });
+      save();
+    },
+    list: () =>
+      Object.entries(pins).map(([key, { name, system, since }]) => ({ key, name, system, since })),
+    forget(keys) {
+      for (const key of Array.isArray(keys) ? keys : []) delete pins[key];
       save();
     },
     clear() {
@@ -79,7 +121,7 @@ function createTrustStore(file) {
     allows: (hostname, fingerprint) =>
       !!fingerprint &&
       Object.entries(pins).some(
-        ([key, value]) => key.startsWith(`${hostname}:`) && value === fingerprint,
+        ([key, approval]) => key.startsWith(`${hostname}:`) && approval.fingerprint === fingerprint,
       ),
   };
 }

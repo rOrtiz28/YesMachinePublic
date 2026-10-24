@@ -5,8 +5,8 @@
 // user approved in the host window.
 //
 // main.cjs creates the viewers with createViewers() and connects them to the host window's IPC
-// channels (inspect, trust, sign-in, sign-in-saved, focus-viewer and the settings that forget
-// approvals and sign-ins). Opening a computer goes in this order:
+// channels (inspect, trust, sign-in, sign-in-saved, focus-viewer and the settings that list and
+// forget approvals and sign-ins). Opening a computer goes in this order:
 // 1. inspect(): a TLS handshake (network/probe.cjs) shows the computer's certificate fingerprint,
 //    and whether it is the one approved before.
 // 2. trust(): the person approves that certificate, kept in the trust store (network/trust.cjs).
@@ -96,12 +96,13 @@ function createViewers({
   /**
    * Approves the certificate inspect() last saw for that computer, and returns its fingerprint.
    * Only a fingerprint this process just observed can be approved, never one supplied by the page.
+   * The page's name and system for the computer are kept with it, for Settings' list.
    */
   function trust(value) {
     const target = validTarget(value),
       fingerprint = target && seen.get(target.key);
     if (!fingerprint) throw Error('Check the computer again before trusting it.');
-    store.set(target.key, fingerprint);
+    store.set(target.key, fingerprint, { name: value.name, system: value.system });
     return fingerprint;
   }
 
@@ -126,7 +127,7 @@ function createViewers({
     const { target, fingerprint } = approved(value);
     const ticket = await requestTicket(target, fingerprint, user.trim(), password);
     const remembered = remember
-      ? saved.set(target.key, { user: user.trim(), password })
+      ? saved.set(target.key, { user: user.trim(), password }, name)
       : (saved.forget(target.key), false);
     open(target, name, ticket);
     return { remembered };
@@ -244,10 +245,13 @@ function createViewers({
     signInSaved,
     focus,
     connected,
-    trustedCount: () => store.count(),
-    forgetTrusted: () => store.clear(),
-    credentials: () => ({ available: saved.available(), count: saved.count() }),
-    forgetCredentials: () => saved.clear(),
+    // Settings' lists: what is kept, and forgetting some of it by "address:port" key.
+    trusted: () => store.list(),
+    forgetTrusted: (keys) => store.forget(keys),
+    credentials: () => ({ available: saved.available(), list: saved.list() }),
+    forgetCredentials: (keys) => {
+      for (const key of Array.isArray(keys) ? keys : []) saved.forget(key);
+    },
   };
 }
 

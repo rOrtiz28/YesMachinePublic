@@ -1366,6 +1366,186 @@ button.device-main:hover {
   color: var(--muted);
   font-size: 12px;
 }
+/* A row with a list of what can be forgotten (public/forget-lists.js): its top, with Show list, opens the list
+   below. The list grows from nothing in three steps, as a switch moves, and shrinks back the same way; as it
+   ends, its entries pop in together like new cards on the house. A row with nothing to list stays closed. */
+.list-setting {
+  display: block;
+  padding: 0;
+}
+.list-setting:not(.empty):hover {
+  border-color: var(--mint-line);
+}
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+  cursor: pointer;
+}
+.list-setting.empty .list-head {
+  cursor: default;
+}
+.list-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--mint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.list-setting.empty .list-toggle {
+  visibility: hidden;
+}
+.list-toggle .icon {
+  margin: 0;
+  transition: rotate 0.16s steps(3);
+}
+.list-toggle .icon svg {
+  width: var(--list-icon, 12px);
+  height: var(--list-icon, 12px);
+}
+.list-setting.open .list-toggle .icon {
+  rotate: 180deg;
+}
+.list-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.16s steps(3);
+}
+.list-setting.open .list-body {
+  grid-template-rows: 1fr;
+}
+/* The border shows only while the list is open, so a closed list takes no room at all. */
+.forget-list {
+  min-height: 0;
+  margin: 0 20px;
+  overflow: hidden;
+  border: 0 solid var(--line-strong);
+  border-radius: 10px;
+}
+.list-setting.open .forget-list {
+  margin-bottom: 20px;
+  border-width: 1px;
+}
+/* The bar on top: Select all on the left, how many are checked and Forget on the right. Forget turns to the danger
+   color while it asks for the second click. */
+.list-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line-strong);
+}
+.list-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.list-bar .ghost {
+  padding: 8px 14px;
+}
+.list-bar .ghost.confirm {
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+.select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.forget-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.forget-list li + li {
+  border-top: 1px solid var(--line);
+}
+.forget-list li.appear {
+  animation: appear 0.16s 0.12s steps(3) both;
+}
+/* An entry: the whole row is its checkbox's label, so a click anywhere on it checks it. */
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.entry:hover {
+  background: var(--raised);
+}
+.entry.selected {
+  background: var(--mint-tint);
+}
+.entry-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.entry-name {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entry-detail {
+  color: var(--muted);
+  font-size: 12px;
+}
+.entry-detail .undated {
+  color: var(--faint);
+}
+/* A checkbox: a square that fills with mint and shows the pixel check, or a dash when only some are checked. The
+   real input stays, invisible, on top of it, so the keyboard and screen readers use it as usual. */
+.pixel-check {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--field);
+  color: transparent;
+}
+.pixel-check input {
+  position: absolute;
+  inset: -8px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+/* The icon is a block in the middle of the box, never on a line of text, at the size forget-lists.js sets in
+   --list-icon so that each of its pixels covers whole pixels of the screen. */
+.pixel-check > span {
+  display: grid;
+}
+.pixel-check svg {
+  display: block;
+  width: var(--list-icon, 12px);
+  height: var(--list-icon, 12px);
+}
+.pixel-check:has(input:checked),
+.pixel-check:has(input:indeterminate) {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.pixel-check:has(input:focus-visible) {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
 /* An on/off switch: a square knob that slides right, in three steps, when it is on. */
 .switch {
   position: relative;
@@ -1722,7 +1902,10 @@ dialog input:focus {
   .icon-button.busy svg,
   .link-art.linked .wire i,
   .device.appear,
-  .switch::after {
+  .switch::after,
+  .list-toggle .icon,
+  .list-body,
+  .forget-list li.appear {
     animation: none;
     transition: none;
   }

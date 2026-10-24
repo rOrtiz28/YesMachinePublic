@@ -60,6 +60,20 @@ test('nothing is remembered without real encryption, including Linux plain-text 
   }
 });
 
+test("Settings' list has each sign-in's account, computer and time, and never the password", (t) => {
+  const file = tempFile(t),
+    store = createCredentialStore(file, keychain(), 'darwin', () => 1_760_000_000_000);
+  store.set('10.0.0.5:4777', { user: 'alex', password: 'secret' }, 'Studio Mac');
+  assert.deepEqual(createCredentialStore(file, keychain(), 'darwin').list(), [
+    { key: '10.0.0.5:4777', user: 'alex', name: 'Studio Mac', since: 1_760_000_000_000 },
+  ]);
+  // One saved by an earlier version has only the user and the secret.
+  fs.writeFileSync(file, JSON.stringify({ '10.0.0.6:4777': { user: 'sam', secret: 'x' } }));
+  assert.deepEqual(createCredentialStore(file, keychain(), 'darwin').list(), [
+    { key: '10.0.0.6:4777', user: 'sam', name: '', since: 0 },
+  ]);
+});
+
 test('clearing forgets every remembered sign-in, and broken files start empty', (t) => {
   const file = tempFile(t),
     store = createCredentialStore(file, keychain(), 'linux');

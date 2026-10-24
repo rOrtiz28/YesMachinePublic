@@ -176,6 +176,7 @@ async function paired(t, server) {
     type: 'paired',
     hostName: 'Test Host',
     platform: 'test',
+    declines: true,
   });
   return peer;
 }
@@ -347,6 +348,15 @@ test('signing in gates signals and file access, refuses a PIN, and a newer sign-
   assert.equal(joined[1].id, server.viewerId);
 });
 
+test('sign-ins with the right password never spend the limit', async (t) => {
+  const { server } = await fixture(t);
+  for (let attempt = 0; attempt < 25; attempt++)
+    assert.equal((await signIn(server, { user: 'alex', password: 'correct horse' })).status, 200);
+  for (let attempt = 0; attempt < 20; attempt++)
+    assert.equal((await signIn(server, { user: 'alex', password: 'guess' })).status, 401);
+  assert.equal((await signIn(server, { user: 'alex', password: 'correct horse' })).status, 429);
+});
+
 test('host readiness is enforced before a viewer can connect', async (t) => {
   let ready = false;
   const { server } = await fixture(t, { isReady: () => ready });
@@ -362,10 +372,10 @@ test('host readiness is enforced before a viewer can connect', async (t) => {
   assert.equal(server.viewerId, undefined);
 });
 
-test('five failed sign-ins spend the minute budget, then it recovers', async (t) => {
+test('twenty failed sign-ins from one address spend its minute, then it recovers', async (t) => {
   let now = 1700000000000;
   const { server } = await fixture(t, { now: () => now });
-  for (let attempt = 0; attempt < 5; attempt++)
+  for (let attempt = 0; attempt < 20; attempt++)
     assert.equal((await signIn(server, { user: 'alex', password: 'guess' })).status, 401);
   assert.equal((await signIn(server, { user: 'alex', password: 'correct horse' })).status, 429);
   now += 60000;
@@ -531,6 +541,29 @@ test('an offer goes away when the viewer leaves, and is refused to anyone but th
   );
 });
 
+test('a declined file offer ends at once, and the next file can go', async (t) => {
+  const { server, root } = await fixture(t);
+  const peer = await paired(t, server);
+  const file = path.join(root, 'busy.bin');
+  fs.writeFileSync(file, crypto.randomBytes(1000));
+  let settled = false;
+  const sending = server.sendFile(file);
+  sending.catch(() => {}).finally(() => (settled = true));
+  const offer = await peer.next('download-offer');
+  peer.send({ type: 'download-decline', id: 'another file' });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(settled, false, 'a decline for another file changes nothing');
+  assert.deepEqual(peer.messages, [], 'and isn’t an error');
+  peer.send({ type: 'download-decline', id: offer.id });
+  await assert.rejects(sending, /still saving another file/);
+  assert.equal((await peer.next('download-error')).id, offer.id);
+  assert.equal((await take(server, offer.path)).status, 404, 'the declined address is spent');
+  const again = server.sendFile(file);
+  const second = await peer.next('download-offer');
+  assert.equal((await take(server, second.path)).status, 200, 'the next file goes at once');
+  await again;
+});
+
 // --- Ending sessions ---
 
 test('host disconnect immediately revokes authorization, then stop terminates all sessions', async (t) => {
@@ -567,6 +600,7 @@ test('signing in with the computer account returns a ticket that opens exactly o
     type: 'paired',
     hostName: 'Test Host',
     platform: 'test',
+    declines: true,
   });
   await waitFor(() => peers.some((p) => p.type === 'viewer-joined'), 'viewer joined');
   const replay = await client(t, server);
@@ -599,7 +633,7 @@ test('sign-in rejects foreign origins, malformed requests, hosts without it, and
   assert.equal((await signIn(server, '{not json')).status, 400);
   assert.equal((await signIn(server, { user: 'alex' })).status, 400);
   assert.equal((await signIn(server, { user: 'a'.repeat(65), password: 'x' })).status, 400);
-  for (let i = 0; i < 5; i++)
+  for (let i = 0; i < 20; i++)
     assert.equal((await signIn(server, { user: 'alex', password: 'guess' })).status, 401);
   assert.equal(
     (await signIn(server, { user: 'alex', password: 'correct horse' })).status,

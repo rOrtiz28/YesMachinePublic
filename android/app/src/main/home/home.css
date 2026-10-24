@@ -39,6 +39,19 @@ dialog {
   max-height: calc(100dvh - 32px);
   overflow: auto;
 }
+/* Settings' lists (public/forget-lists.js): taller entries and bigger checkboxes, for fingers, with icons of about
+   16px, which forget-lists.js rounds to whole pixels of the screen. */
+:root {
+  --list-icon-wanted: 16;
+}
+.entry {
+  min-height: 60px;
+  padding: 14px 16px;
+}
+.pixel-check {
+  width: 24px;
+  height: 24px;
+}
 
 /* --- Phones ------------------------------------------------------------------------------------------------------- */
 
@@ -77,6 +90,18 @@ dialog {
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
+  }
+  /* A list's row stacks its text and Show list, and its bar wraps. */
+  .list-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .forget-list {
+    margin: 0 12px;
+  }
+  .list-bar {
+    flex-wrap: wrap;
   }
 }
 

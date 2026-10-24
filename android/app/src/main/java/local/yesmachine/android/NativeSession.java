@@ -89,6 +89,8 @@ public final class NativeSession {
     private long transferSize, received;
     private boolean pendingSave;
     private Call transferCall;
+    // Whether the computer takes download-decline for a file this side can't take now, as its paired message says.
+    private boolean hostDeclines;
 
     /** A session with the computer over a client pinned to its approved fingerprint; throws if it isn't a valid pin. */
     NativeSession(Context context, HostEndpoint host, String fingerprint, Listener listener)
@@ -140,6 +142,8 @@ public final class NativeSession {
                                 text.getBytes(StandardCharsets.UTF_8).length > 110000
                             ) throw new Exception("A host message exceeded the size limit.");
                             JSONObject message = new JSONObject(text);
+                            if (message.optString("type").equals("paired")) hostDeclines =
+                                message.optBoolean("declines");
                             // Files are handled here; every other message goes to the page as it came.
                             if (message.optString("type").startsWith("download-")) handleDownload(
                                 message
@@ -300,14 +304,18 @@ public final class NativeSession {
      * - download-progress, and download-end of an offered file: nothing to do, since take() counts the bytes itself.
      * - download-start, download-chunk, download-end: the older way, the file in base64 chunks over the session.
      * - download-error: the computer couldn't send the file.
-     * While a received file waits for the person to save it, these messages are ignored.
+     * While a received file waits for the person to save it, these messages are ignored, and a new offer is declined.
      */
     private void handleDownload(JSONObject message) throws Exception {
         String type = message.optString("type"),
             id = message.optString("id");
         if (pendingSave) {
-            if (type.equals("download-start")) listener.notice(
+            if (type.equals("download-start") || type.equals("download-offer")) listener.notice(
                 "Finish saving the current file before receiving another one."
+            );
+            // The computer would otherwise wait ten minutes for this file before it could send another.
+            if (type.equals("download-offer") && hostDeclines && socket != null) socket.send(
+                new JSONObject().put("type", "download-decline").put("id", id).toString()
             );
             return;
         }
@@ -349,7 +357,7 @@ public final class NativeSession {
             transferId = id;
             received = 0;
             // A name safe to suggest when saving: no path separators, control characters or characters Windows
-            // forbids, not "." or "..", and at most 180 characters.
+            // forbids, not "." or "..", and at most 180 characters, never cutting an emoji in half.
             transferName = message
                 .optString("name", "received-file")
                 .replaceAll("[\\\\/\\p{Cntrl}<>:\"|?*]", "_");
@@ -358,7 +366,7 @@ public final class NativeSession {
                 transferName.equals(".") ||
                 transferName.equals("..")
             ) transferName = "received-file";
-            if (transferName.length() > 180) transferName = transferName.substring(0, 180);
+            transferName = Text.cut(transferName, 180);
             transferFile = File.createTempFile("ym-receive-", ".tmp", context.getCacheDir());
             transferStream = new FileOutputStream(transferFile);
             listener.notice("Receiving " + transferName + "…");
@@ -428,7 +436,7 @@ public final class NativeSession {
             .optString("name", "received-file")
             .replaceAll("[\\\\/\\p{Cntrl}<>:\"|?*]", "_");
         if (name.trim().isEmpty() || name.equals(".") || name.equals("..")) name = "received-file";
-        if (name.length() > 180) name = name.substring(0, 180);
+        name = Text.cut(name, 180);
         final File file = File.createTempFile("ym-receive-", ".tmp", context.getCacheDir());
         final String saveAs = name;
         transferId = id;
@@ -545,12 +553,18 @@ public final class NativeSession {
         if (connected && !destroyed) listener.event(id, "close", "App left the foreground");
     }
 
-    /** Ends the session for good, when the viewer closes: also shuts down the client's threads and connections. */
+    /**
+     * Ends the session for good, when the viewer closes: also shuts down the client's threads and connections. The
+     * connections close on a thread of their own: closing one that downloaded a file sends TLS's closing message,
+     * network use that Android stops the app for on the main thread, where the viewer closes.
+     */
     public synchronized void destroy() {
         destroyed = true;
         disconnect();
-        client.dispatcher().executorService().shutdown();
-        client.connectionPool().evictAll();
+        new Thread(() -> {
+            client.dispatcher().executorService().shutdown();
+            client.connectionPool().evictAll();
+        }, "session-close").start();
     }
 
     /** The exception's message for a notice, or a general one when it has none. */

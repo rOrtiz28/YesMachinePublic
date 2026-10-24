@@ -55,6 +55,12 @@ test('a screen without a name gets its number, and names lose control characters
   );
 });
 
+test('a long name is cut to 60 characters, never through an emoji', () => {
+  // 📺 is two UTF-16 units; at 59 and 60 the cut would split it.
+  const [screen] = listScreens([display(1, 0, 0, 1920, 1080, 1, 'x'.repeat(59) + '📺')], 1);
+  assert.equal(screen.name, 'x'.repeat(59));
+});
+
 test('broken entries are left out', () => {
   assert.deepEqual(listScreens(null, 1), []);
   assert.deepEqual(listScreens([null, { id: 3 }, display(4, 0, 0, 0, 100)], 4), []);

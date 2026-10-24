@@ -137,6 +137,11 @@ test("a device's certificate must be approved, and only the one just seen can be
   assert.deepEqual(check, { fingerprint: device.fingerprint, trusted: false, changed: false });
   client.trust(ID);
   assert.equal(store.get('192.168.1.40:' + device.port), device.fingerprint);
+  // Settings' list names the device, with its system, or Android when discovery gave none.
+  assert.deepEqual(
+    store.list().map(({ name, system }) => [name, system]),
+    [["Alejandro's Tab", 'Android']],
+  );
   assert.equal((await client.inspect(ID)).trusted, true);
   store.set('192.168.1.40:' + device.port, 'AA:' + Array(31).fill('01').join(':'));
   assert.deepEqual(await client.inspect(ID), {

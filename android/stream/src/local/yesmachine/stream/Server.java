@@ -31,6 +31,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.text.Normalizer;
 import java.util.Arrays;
 
@@ -43,9 +44,11 @@ import java.util.Arrays;
  * injects the computer's touches, scrolls and keys as if they came from the device, sends what apps play (Sound),
  * shares the clipboard, and moves files (Files). Much of it uses Android's hidden APIs, through reflection.
  *
- * Arguments: the name of the local socket to listen on, then the bitrate in bits per second. The computer reaches the
- * socket through an adb port forward. The first connection is the stream; every later one is a file connection
- * (Files). The server prints "ready" once it listens, and exits when the stream's connection closes.
+ * Arguments: the name of the local socket to listen on, the bitrate in bits per second, and the session's secret, 16
+ * bytes in hex. The computer reaches the socket through an adb port forward, and every connection it makes starts with
+ * the secret's 16 bytes; a connection that doesn't is closed, so nothing else on the device can pass for the computer,
+ * even if it finds the socket. The first connection with the secret is the stream; every later one is a file
+ * connection (Files). The server prints "ready" once it listens, and exits when the stream's connection closes.
  *
  * The Yes Machine app chooses general or advanced mode, one at a time, since both capturing the screen at once breaks
  * the app's capture. So this server doesn't start while the app is in general mode, and ends when the app switches to
@@ -102,6 +105,7 @@ public final class Server {
         REPORT = 11,
         CHECK = 12;
     private static final int CLIPBOARD_LIMIT = 60000; // the most copied text that goes either way, in bytes
+    private static final int TEXT_LIMIT = 16_384; // the most text typed at once, in bytes, as in general mode
 
     // The stream to the computer. Several threads write to it, each message whole while holding its lock.
     private final DataOutputStream out;
@@ -117,21 +121,26 @@ public final class Server {
     }
 
     /**
-     * Unless the app is in general mode, listens on the local socket, and serves the first connection as the stream
-     * until the session ends.
+     * Unless the app is in general mode, listens on the local socket, and serves the first connection with the
+     * session's secret as the stream until the session ends.
      */
     public static void main(String[] args) throws Exception {
         // app_process gives no main looper, as an app has, and some of Android's classes expect one.
         Looper.prepareMainLooper();
         String name = args.length > 0 ? args[0] : "yes-machine-stream";
         int bitRate = args.length > 1 ? Integer.parseInt(args[1]) : 8_000_000;
+        byte[] secret = args.length > 2 ? hex(args[2]) : null;
+        if (secret == null || secret.length != 16) {
+            System.out.println("The stream server needs the session's secret.");
+            return;
+        }
         if (generalMode()) {
             System.out.println("Yes Machine on this device is set to general mode.");
             return;
         }
         try (LocalServerSocket listener = new LocalServerSocket(name)) {
             System.out.println("ready");
-            try (LocalSocket socket = listener.accept()) {
+            try (LocalSocket socket = acceptWith(listener, secret)) {
                 // However the session ends, as the computer leaves, on an error or when the app switches to general
                 // mode, the heartbeat is cleared on the way out, so the app's home screen shows it over at once.
                 Runtime.getRuntime().addShutdownHook(
@@ -142,7 +151,7 @@ public final class Server {
                         }
                     }
                 );
-                acceptFiles(listener);
+                acceptFiles(listener, secret);
                 new Server(socket.getOutputStream()).run(
                     new DataInputStream(socket.getInputStream()),
                     bitRate
@@ -151,11 +160,51 @@ public final class Server {
         }
     }
 
+    /** The next connection to the socket that starts with the secret; the ones before it are closed. */
+    private static LocalSocket acceptWith(LocalServerSocket listener, byte[] secret)
+        throws IOException {
+        while (true) {
+            LocalSocket socket = listener.accept();
+            if (presents(socket, secret)) return socket;
+            socket.close();
+        }
+    }
+
     /**
-     * Takes each further connection to the socket as the computer's file connection (Files), on a thread of its own,
-     * until the socket closes. Once a file connection says the computer's name, the heartbeat carries it.
+     * Whether a connection starts with the session's secret, read within two seconds. The comparison takes the same
+     * time whatever the bytes, so a wrong guess tells nothing about the right one.
      */
-    private static void acceptFiles(final LocalServerSocket listener) {
+    private static boolean presents(LocalSocket socket, byte[] secret) {
+        try {
+            socket.setSoTimeout(2000);
+            byte[] said = new byte[secret.length];
+            new DataInputStream(socket.getInputStream()).readFully(said);
+            socket.setSoTimeout(0);
+            return MessageDigest.isEqual(said, secret);
+        } catch (IOException wrong) {
+            return false;
+        }
+    }
+
+    /** The bytes a hex string spells, or null when it isn't one. */
+    private static byte[] hex(String text) {
+        if (text.length() % 2 != 0) return null;
+        byte[] bytes = new byte[text.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int high = Character.digit(text.charAt(2 * i), 16),
+                low = Character.digit(text.charAt(2 * i + 1), 16);
+            if (high < 0 || low < 0) return null;
+            bytes[i] = (byte) (high * 16 + low);
+        }
+        return bytes;
+    }
+
+    /**
+     * Takes each further connection to the socket that starts with the secret as the computer's file connection
+     * (Files), on a thread of its own, until the socket closes. Once a file connection says the computer's name, the
+     * heartbeat carries it.
+     */
+    private static void acceptFiles(final LocalServerSocket listener, final byte[] secret) {
         Thread accept = new Thread(
             new Runnable() {
                 @Override
@@ -163,7 +212,7 @@ public final class Server {
                     while (true) {
                         try {
                             Files.serve(
-                                listener.accept(),
+                                acceptWith(listener, secret),
                                 new Files.Listener() {
                                     @Override
                                     public void computer(String name) {
@@ -538,7 +587,11 @@ public final class Server {
                                     in.readInt()
                                 );
                             } else if (type == TEXT) {
-                                byte[] bytes = new byte[in.readInt()];
+                                int length = in.readInt();
+                                if (length < 0 || length > TEXT_LIMIT) throw new IOException(
+                                    "Text too long"
+                                );
+                                byte[] bytes = new byte[length];
                                 in.readFully(bytes);
                                 input.text(new String(bytes, StandardCharsets.UTF_8));
                             } else if (type == KEYBOARD) {

@@ -45,7 +45,7 @@ public final class HostEndpoint {
         this.name = cleanLabel(name, address);
         this.platform = cleanLabel(platform, "Computer");
         String os = cleanLabel(system, "");
-        this.system = os.length() > 48 ? os.substring(0, 48) : os;
+        this.system = Text.cut(os, 48);
     }
 
     /**
@@ -91,15 +91,13 @@ public final class HostEndpoint {
     /**
      * A label from the network (or typed) made safe to show: control characters and Unicode's bidirectional
      * embedding, override and isolate marks (U+202A to U+202E, U+2066 to U+2069) become spaces, so a name can't break
-     * a line or reorder the text around it, and it keeps at most 80 characters. Returns fallback when the value is
-     * empty.
+     * a line or reorder the text around it, and it keeps at most 80 characters, never cutting an emoji in half.
+     * Returns fallback when the value is empty.
      */
     public static String cleanLabel(String value, String fallback) {
         if (value == null || value.trim().isEmpty()) return fallback;
-        return value
-            .replaceAll("[\\p{Cntrl}\\u202a-\\u202e\\u2066-\\u2069]", " ")
-            .substring(0, Math.min(80, value.length()))
-            .trim();
+        String plain = value.replaceAll("[\\p{Cntrl}\\u202a-\\u202e\\u2066-\\u2069]", " ");
+        return Text.cut(plain, 80).trim();
     }
 
     /** The address and port as "192.168.1.25:4777", the key for this computer's saved certificate and sign-in. */

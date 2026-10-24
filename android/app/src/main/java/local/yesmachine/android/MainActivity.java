@@ -119,9 +119,10 @@ public final class MainActivity extends Activity {
     // The fingerprint last read from each computer, by "address:port". Trusting a computer approves the one read
     // here, never one the page sends.
     private final Map<String, String> seen = new ConcurrentHashMap<>();
-    // Saved settings: the approved fingerprints by "address:port", general mode's settings, and the theme. day is
-    // whether the day theme is on; advancedConnected whether a computer is connected in advanced mode.
-    private SharedPreferences pins, control, appearance;
+    // Saved settings: the approved fingerprints by "address:port" and, for Settings' list, each one's computer and
+    // time (SettingsLists), general mode's settings, and the theme. day is whether the day theme is on;
+    // advancedConnected whether a computer is connected in advanced mode.
+    private SharedPreferences pins, trustedDetails, control, appearance;
     private boolean day, advancedConnected;
     // Shows general mode's state on the home page whenever ShareService changes it.
     private final ShareState.Listener sharing = () -> ui.post(this::pushControl);
@@ -143,6 +144,11 @@ public final class MainActivity extends Activity {
     // the cached copy.
     private File savingFile;
     private Runnable finishSave;
+    // A received file that arrived while a screen this app opened was in front (externalUi), as its file chooser: the
+    // app asks where to save it once it is back in front. Its name, and what to run afterwards.
+    private File waitingFile;
+    private String waitingName;
+    private Runnable waitingFinish;
     // The page's element shown full screen, while it is, and how to tell WebView it no longer is.
     private View customView;
     private WebChromeClient.CustomViewCallback customCallback;
@@ -158,6 +164,7 @@ public final class MainActivity extends Activity {
         setTheme(day ? R.style.YesMachine_Day : R.style.YesMachine_Night);
         super.onCreate(state);
         pins = getSharedPreferences("approved-host-certificates", MODE_PRIVATE);
+        trustedDetails = getSharedPreferences("trusted-details", MODE_PRIVATE);
         control = getSharedPreferences("control", MODE_PRIVATE);
         ShareState.listen(sharing);
         // ShareService is on in general mode and off in advanced mode.
@@ -345,6 +352,7 @@ public final class MainActivity extends Activity {
                 files.put("/host.css", "host.css");
                 files.put("/pixel-house.js", "pixel-house.js");
                 files.put("/setup-guides.js", "setup-guides.js");
+                files.put("/forget-lists.js", "forget-lists.js");
                 files.put("/pixel-day.js", "pixel-day.js");
                 files.put("/pixel-home.js", "pixel-home.js");
                 files.put("/theme.js", "theme.js");
@@ -507,13 +515,21 @@ public final class MainActivity extends Activity {
         }
     }
 
-    /** The computer a request names, by address, port and name; throws unless the address is private IPv4. */
+    /** A computer's name for Settings' lists, or "" when the page gave none and it goes by its address. */
+    private static String nameOf(HostEndpoint host) {
+        return host.name.equals(host.address) ? "" : host.name;
+    }
+
+    /**
+     * The computer a request names, by address, port, name and system; throws unless the address is private IPv4.
+     */
     private static HostEndpoint target(JSONObject args) {
         return new HostEndpoint(
             args.optString("address"),
             args.optInt("port"),
             args.optString("name"),
-            "Computer"
+            "Computer",
+            args.optString("system")
         );
     }
 
@@ -540,7 +556,8 @@ public final class MainActivity extends Activity {
                 return probe(args.optJSONArray("targets"));
             case "inspect":
                 return inspect(target(args));
-            // Approves the fingerprint just read from that computer by inspect, never one the page sends.
+            // Approves the fingerprint just read from that computer by inspect, never one the page sends. The
+            // computer's name and system are kept with it, for Settings' list.
             case "trust": {
                 HostEndpoint host = target(args);
                 String fingerprint = seen.get(host.authority());
@@ -548,6 +565,10 @@ public final class MainActivity extends Activity {
                     "Check the computer again before trusting it."
                 );
                 pins.edit().putString(host.authority(), fingerprint).apply();
+                trustedDetails
+                    .edit()
+                    .putString(host.authority(), SettingsLists.kept(nameOf(host), host.system))
+                    .apply();
                 return new JSONObject();
             }
             case "signIn":
@@ -559,18 +580,19 @@ public final class MainActivity extends Activity {
                 );
             case "signInSaved":
                 return signInSaved(target(args));
-            // Settings: the trusted certificates and the remembered sign-ins.
-            case "trustedCount":
-                return new JSONObject().put("count", pins.getAll().size());
+            // Settings' lists of trusted certificates and remembered sign-ins, and forgetting the ones checked there,
+            // by "address:port".
+            case "trustedList":
+                return new JSONObject().put("list", SettingsLists.list(pins, trustedDetails));
             case "forgetTrusted":
-                pins.edit().clear().apply();
+                SettingsLists.forget(SettingsLists.keys(args), pins, trustedDetails);
                 return new JSONObject();
             case "credentialsInfo":
                 return new JSONObject()
                     .put("available", credentials.available())
-                    .put("count", credentials.count());
+                    .put("list", credentials.list());
             case "forgetCredentials":
-                credentials.clear();
+                for (String key : SettingsLists.keys(args)) credentials.forget(key);
                 return new JSONObject();
             // General mode.
             case "control":
@@ -614,9 +636,12 @@ public final class MainActivity extends Activity {
                 );
                 return new JSONObject();
             }
-            // Forgets the computers that are always allowed.
+            // Settings' list of the computers that are always allowed, and forgetting the ones checked there, by
+            // their certificate's fingerprint.
+            case "allowedList":
+                return new JSONObject().put("list", SettingsLists.list(allowedComputers(), null));
             case "forgetComputers":
-                getSharedPreferences("allowed-computers", MODE_PRIVATE).edit().clear().apply();
+                SettingsLists.forget(SettingsLists.keys(args), allowedComputers());
                 return controlState();
             // Saved at once; the bars change on the main thread.
             case "setTheme": {
@@ -634,6 +659,11 @@ public final class MainActivity extends Activity {
     }
 
     // --- General mode: sharing this device's screen ---
+
+    /** The computers always allowed in general mode, which ShareService keeps by their certificate's fingerprint. */
+    private SharedPreferences allowedComputers() {
+        return getSharedPreferences("allowed-computers", MODE_PRIVATE);
+    }
 
     /**
      * General mode, as the home screen shows it: the chosen mode, whether Accessibility allows Yes Machine (its
@@ -656,10 +686,7 @@ public final class MainActivity extends Activity {
             .put("name", ShareService.deviceName(this))
             .put("system", "Android " + Build.VERSION.RELEASE)
             .put("fingerprint", fingerprint)
-            .put(
-                "allowedComputers",
-                getSharedPreferences("allowed-computers", MODE_PRIVATE).getAll().size()
-            )
+            .put("allowedComputers", allowedComputers().getAll().size())
             .put("advancedConnected", advancedConnected)
             .put(
                 "asking",
@@ -958,7 +985,8 @@ public final class MainActivity extends Activity {
         );
         String fingerprint = approved(host),
             ticket = requestTicket(host, fingerprint, user, password);
-        boolean remembered = remember && credentials.set(host.authority(), user, password);
+        boolean remembered =
+            remember && credentials.set(host.authority(), user, password, nameOf(host));
         if (!remember) credentials.forget(host.authority());
         ui.post(() -> openViewer(host, fingerprint, ticket));
         return new JSONObject().put("remembered", remembered);
@@ -1088,29 +1116,24 @@ public final class MainActivity extends Activity {
                         });
                     }
 
-                    // A received file: Android asks the person where to save it, and onActivityResult copies it
-                    // there. When this viewer is gone, the app is closing or in the background, or another file is
-                    // waiting to be saved, the file is dropped instead.
+                    // A received file: Android asks the person where to save it (askToSave()). When this viewer is
+                    // gone or the app is closing, the file is dropped. When another screen of this app is in front,
+                    // such as its file chooser, or another file is waiting to be saved, it waits until the app is
+                    // back in front.
                     public void save(File file, String name, Runnable finished) {
                         ui.post(() -> {
-                            if (viewer != web || destroyed || !foreground || savingFile != null) {
+                            if (viewer != web || destroyed) {
                                 finished.run();
                                 return;
                             }
-                            savingFile = file;
-                            finishSave = finished;
-                            externalUi = true;
-                            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
-                                .addCategory(Intent.CATEGORY_OPENABLE)
-                                .setType("application/octet-stream")
-                                .putExtra(Intent.EXTRA_TITLE, name);
-                            try {
-                                startActivityForResult(intent, SAVE_FILE);
-                            } catch (Exception error) {
-                                externalUi = false;
-                                finishSaving();
-                                notice("No file-save application is available.");
+                            if (!foreground || savingFile != null || waitingFile != null) {
+                                dropWaiting();
+                                waitingFile = file;
+                                waitingName = name;
+                                waitingFinish = finished;
+                                return;
                             }
+                            askToSave(file, name, finished);
                         });
                     }
                 }
@@ -1202,6 +1225,9 @@ public final class MainActivity extends Activity {
         if (foreground) {
             home.onResume();
             discovery.start();
+            // The advanced-mode check stops while a viewer is open; it starts again with the home screen.
+            ui.removeCallbacks(advancedCheck);
+            ui.post(advancedCheck);
         }
         try {
             push(
@@ -1254,6 +1280,36 @@ public final class MainActivity extends Activity {
             fileChooser = null;
         }
         finishSaving();
+        dropWaiting();
+    }
+
+    /**
+     * Asks Android where to save a received file, and onActivityResult copies it there; finished runs once it's done
+     * or canceled, which deletes the cached copy.
+     */
+    private void askToSave(File file, String name, Runnable finished) {
+        savingFile = file;
+        finishSave = finished;
+        externalUi = true;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("application/octet-stream")
+            .putExtra(Intent.EXTRA_TITLE, name);
+        try {
+            startActivityForResult(intent, SAVE_FILE);
+        } catch (Exception error) {
+            externalUi = false;
+            finishSaving();
+            notice("No file-save application is available.");
+        }
+    }
+
+    /** Forgets a received file that waited to be saved, deleting its cached copy. */
+    private void dropWaiting() {
+        if (waitingFinish != null) waitingFinish.run();
+        waitingFile = null;
+        waitingName = null;
+        waitingFinish = null;
     }
 
     /** Ends a waiting save: runs its finish action, which deletes the received file's cached copy. */
@@ -1329,10 +1385,20 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         foreground = true;
-        // Back in the viewer, which may send what was copied meanwhile (the shared clipboard).
+        // Back in the viewer, which may send what was copied meanwhile (the shared clipboard), and asks where to save a
+        // file that arrived while another screen of this app was in front.
         if (viewer != null) {
             viewer.onResume();
             viewer.evaluateJavascript("window.dispatchEvent(new Event('focus'))", null);
+            if (waitingFile != null && savingFile == null) {
+                File file = waitingFile;
+                String name = waitingName;
+                Runnable finished = waitingFinish;
+                waitingFile = null;
+                waitingName = null;
+                waitingFinish = null;
+                askToSave(file, name, finished);
+            }
             return;
         }
         home.onResume();

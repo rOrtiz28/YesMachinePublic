@@ -3,14 +3,16 @@
 
 The source is android/app/src/main/res/drawable/ic_launcher.xml: the app's mint square with the ym letters on it.
 This script converts it to an SVG (assets/icon.svg) and renders the app icons from that: assets/icon.png (1024 by
-1024, for Linux and the app's own windows and Dock), icon.icns (macOS) and icon.ico (Windows).
+1024, for the app's own windows and Dock), icon.icns (macOS), icon.ico (Windows), and for Linux one PNG per size
+in assets/linux/ (16x16.png to 512x512.png), the sizes the desktop's icon theme looks in: a single 1024-pixel icon
+leaves Ubuntu's app list showing a generic one.
 
 It also renders the tray icons the desktop app shows: the colored mark for Linux and Windows (tray.png and
 tray@2x.png), and for the macOS menu bar a template image of the ym letters alone, black on transparent
 (trayTemplate.png and trayTemplate@2x.png), which macOS tints for light and dark menu bars.
 
-Run it by hand after changing the launcher vector: python3 scripts/generate-icons.py. With --tray, it renders only
-the tray icons, from the assets/icon.svg already there.
+Run it by hand after changing the launcher vector: python3 scripts/generate-icons.py. With --tray or --linux, it
+renders only the tray icons or only the Linux icons, from the assets/icon.svg already there.
 
 Requires rsvg-convert (librsvg) and macOS iconutil. Uses only Python's standard
 library. PNG-compressed ICO entries are supported by modern Windows.
@@ -106,7 +108,9 @@ def main():
         (ASSETS / "icon.ico").write_bytes(struct.pack("<HHH", 0, 1, len(entries))
                                          + b"".join(directory) + b"".join(data for _, data in entries))
     render_tray(svg_path)
-    print("Generated assets/icon.svg, icon.png, icon.icns, icon.ico and the tray icons from", SOURCE.relative_to(ROOT))
+    render_linux(svg_path)
+    print("Generated assets/icon.svg, icon.png, icon.icns, icon.ico, the tray icons and the Linux icons from",
+          SOURCE.relative_to(ROOT))
 
 
 def render_tray(svg_path=ASSETS / "icon.svg"):
@@ -138,6 +142,17 @@ def render_tray(svg_path=ASSETS / "icon.svg"):
         render(source, 48, 36, ASSETS / "trayTemplate@2x.png")
 
 
+def render_linux(svg_path=ASSETS / "icon.svg"):
+    """Render the Linux icons from the SVG at svg_path: assets/linux/<size>x<size>.png for each size the freedesktop
+    icon theme (hicolor) has a folder for, up to 512, which the deb installs as /usr/share/icons/hicolor/<size>/apps."""
+    folder = ASSETS / "linux"
+    folder.mkdir(exist_ok=True)
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        subprocess.run(["rsvg-convert", "--width", str(size), "--height", str(size),
+                        "--output", str(folder / f"{size}x{size}.png"), str(svg_path)], check=True)
+
+
 if __name__ == "__main__":
     import sys
-    render_tray() if sys.argv[1:] == ["--tray"] else main()
+    options = {"--tray": render_tray, "--linux": render_linux}
+    options[sys.argv[1]]() if sys.argv[1:2] and sys.argv[1] in options else main()

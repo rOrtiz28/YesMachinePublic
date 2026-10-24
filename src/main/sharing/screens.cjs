@@ -6,6 +6,7 @@
 // main.cjs builds the list from Electron's displays for the host window's screen picker and the
 // viewer's map of screens, keeps the choice in shared-screen.json, and uses chooseScreen() to
 // decide which display is captured and where input lands.
+const { cutText } = require('../network/security.cjs');
 
 // At most this many displays are listed.
 const MAX_SCREENS = 16;
@@ -38,13 +39,13 @@ function listScreens(displays, primaryId) {
       // Electron measures in points; the scale factor turns them into pixels (1 when unknown).
       const { x, y, width, height } = display.bounds,
         scale = display.scaleFactor > 0 ? display.scaleFactor : 1;
+      // The system's name without control characters, at most 60 characters.
+      const label = String(display.label || '')
+        .replace(/[\x00-\x1f\x7f]/g, '')
+        .trim();
       return {
         id: String(display.id),
-        // The system's name without control characters, at most 60 characters.
-        name: String(display.label || '')
-          .replace(/[\x00-\x1f\x7f]/g, '')
-          .trim()
-          .slice(0, 60),
+        name: cutText(label, 60),
         width: Math.round(width * scale),
         height: Math.round(height * scale),
         x,

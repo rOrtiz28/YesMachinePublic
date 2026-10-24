@@ -7,8 +7,8 @@ import org.junit.Test;
 /**
  * Tests HostEndpoint, which every computer's address passes through. Only numeric private IPv4 addresses are accepted
  * (no host names, loopback, public addresses, leading zeros, IPv6 or URL tricks); a typed address may start with
- * https:// and carry a port, but nothing else a URL can hold; and labels from the network come out short and without
- * control characters.
+ * https:// and carry a port, but nothing else a URL can hold; and labels from the network come out short, without
+ * control characters and never ending in half an emoji.
  */
 public class HostEndpointTest {
 
@@ -69,5 +69,10 @@ public class HostEndpointTest {
             ).length()
         );
         assertEquals("safe name", HostEndpoint.cleanLabel("safe\nname", "fallback"));
+        // A cut through an emoji drops its first half too.
+        assertEquals(
+            "a".repeat(79),
+            HostEndpoint.cleanLabel("a".repeat(79) + "\uD83D\uDE00", "fallback")
+        );
     }
 }

@@ -319,16 +319,16 @@ final class FileChannel {
 
     /**
      * A name from the other side, made safe to save under: only what follows its last slash or backslash, with
-     * control characters and the characters Windows forbids (<>:"|?*) turned into _, and at most 180 characters. A
-     * name that is empty or only dots becomes "file", and one that starts with a dot gets "file" in front, so it
-     * isn't hidden.
+     * control characters and the characters Windows forbids (<>:"|?*) turned into _, and at most 180 characters,
+     * never cutting an emoji in half. A name that is empty or only dots becomes "file", and one that starts with a
+     * dot gets "file" in front, so it isn't hidden.
      */
     static String safeName(String name) {
         String clean = name
             .replaceAll(".*[\\\\/]", "")
             .replaceAll("[\\p{Cntrl}<>:\"|?*]", "_")
             .trim();
-        if (clean.length() > 180) clean = clean.substring(0, 180);
+        clean = Text.cut(clean, 180);
         if (clean.isEmpty() || clean.matches("\\.+")) return "file";
         return clean.startsWith(".") ? "file" + clean : clean; // not hidden
     }

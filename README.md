@@ -19,7 +19,7 @@
 
 An English-language remote desktop app for devices on the same private network. Run the desktop app on a computer and connect to it from another device's browser, from Yes Machine on another computer, or from the Android app. The desktop app can also control an Android phone or tablet, through the Yes Machine app on it or through Android's USB or Wi-Fi debugging connection.
 
-**Version 1.1.0 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
+**Version 1.1.3 is an original remote desktop app, not a complete NoMachine replacement.** It is free software under the MIT license and is not affiliated with NoMachine. See [docs/VALIDATION.md](docs/VALIDATION.md) for the test results and the checks still to do.
 
 ## What it does
 
@@ -73,7 +73,7 @@ Get the file for your system from the [latest release](https://github.com/rOrtiz
 | macOS, Apple silicon | `…-mac-arm64.dmg` | Open it and drag **Yes Machine** to Applications. The app isn't notarized by Apple, so macOS stops it the first time: open **System Settings → Privacy & Security** and choose **Open Anyway**. |
 | macOS, Intel | `…-mac-x64.dmg` | The same. |
 | Windows 10 or 11, x64 or ARM | `…-win.exe` | Run it: it installs Yes Machine for your account, adds it to the Start menu and opens it. The installer isn't signed, so SmartScreen may warn about it: choose **More info → Run anyway**. To remove it, use **Settings → Apps**. |
-| Ubuntu or Debian | `…-linux-amd64.deb`, or `…-linux-arm64.deb` on ARM | Open it, and App Center installs it; or run `sudo apt install ./` followed by the file's name. Yes Machine then appears among your apps, with Chromium's sandbox and the sound already set up. |
+| Ubuntu or Debian | `…-linux-amd64.deb`, or `…-linux-arm64.deb` on ARM | Open it, and App Center installs it; or run `sudo apt install ./` followed by the file's name. Yes Machine then appears among your apps, with Chromium's sandbox and the sound already set up. To update it later, use the command with the new file: App Center installs a deb only the first time. |
 | Other Linux | `…-linux-x64.tar.gz`, or `…-linux-arm64.tar.gz` on ARM | Extract it and run `yes-machine` in the folder. Where sandboxes are restricted, Chromium's sandbox helper must belong to root first: `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`. Sound needs `pulseaudio-utils`. |
 | Android 8 or later | `…-android.apk` | Open it on the device and allow installing apps from that source. |
 
@@ -127,9 +127,9 @@ Validate the build on each operating system and processor you target.
 <summary><b>More about connecting</b></summary>
 
 - Only the account running Yes Machine on the computer can sign in. Failed sign-ins are limited to five a minute, and the desktop app sends a password only after the TLS handshake shows the approved certificate.
-- A computer that later shows a different certificate asks for the comparison again. **Settings → Trusted certificates** forgets every approval, and each viewer window accepts only the approved certificate. Discovery only hints at an address; it never proves who a device is.
+- A computer that later shows a different certificate asks for the comparison again. **Settings → Trusted certificates** lists each approval with the computer's name and the date, to forget one, several or all, and each viewer window accepts only the approved certificate. Discovery only hints at an address; it never proves who a device is.
 - If the connection drops, the viewer window closes and the main window says which computer disconnected. **Save** keeps a discovered computer in the list, and **Forget** removes it. Double-clicking a computer you're connected to brings its window forward.
-- In the Android app, trust applies to that exact address and port, and **Settings** forgets saved computers, sign-ins and trusted certificates. A computer announced at an address outside the device's network, such as a virtual machine behind NAT, is labeled **Another network**; give the virtual machine a bridged adapter to reach it. Leaving the app disconnects the session, except while its document picker or Save dialog is open.
+- In the Android app, trust applies to that exact address and port, and **Settings** lists the saved computers, sign-ins and trusted certificates, to forget one, several or all. A computer announced at an address outside the device's network, such as a virtual machine behind NAT, is labeled **Another network**; give the virtual machine a bridged adapter to reach it. Leaving the app disconnects the session, except while its document picker or Save dialog is open.
 - One viewer at a time: signing in from another device takes over the session, and the previous device says that another device connected. On the computer, **Disconnect viewer** removes the current viewer, and **Stop sharing** ends sharing.
 
 </details>
@@ -164,7 +164,7 @@ While the app is in general mode, the computer doesn't offer advanced mode for i
 1. Allow Yes Machine in **Accessibility**, once: on the app's **This device** card, tap **Allow control**, then turn Yes Machine on (on Samsung devices, under **Installed apps**). It lets the computer touch, type and use Back, Home and Recents; without it, the computer can only watch.
 2. Tap **Share this device**. Each time, Android asks to record the screen: choose **Share entire screen**. The first time it also asks to record audio, so the computer can hear what apps play.
 3. On the computer, the device appears in the house with its name, Android version and address. Double-click it. The first time, compare the device's certificate fingerprint with the one under **Verify this device's certificate** on its card.
-4. The device asks **Allow this computer?**, in the app and as a notification. With **Always allow this computer**, it lets that computer in later without asking; **Settings → Allowed computers** forgets them.
+4. The device asks **Allow this computer?**, in the app and as a notification. With **Always allow this computer**, it lets that computer in later without asking; **Settings → Allowed computers** lists them, to forget one, several or all.
 
 The card then names the computer in control, with **Disconnect it** and **Stop sharing**. One computer is in control at a time; another one is told the device is busy.
 
@@ -208,7 +208,7 @@ The computer you open listens on its own private address only. A viewer signs in
 - The computer binds to the chosen private IPv4 address. HTTPS, WebSocket signaling and file transfers use **TCP port 4777**; WebRTC screen, sound and control traffic use direct local ICE candidates on dynamic **UDP ports**. Allow the app on the computer's private-network firewall profile; opening TCP 4777 alone may not be enough. On Windows, mark the network as private (**Settings → Network & internet**, the connection, **Private network**) and allow Yes Machine when Windows asks.
 - The desktop app browses for **`_yes-machine._tcp`** over mDNS (**UDP port 5353**), and for **`_yes-machine-device._tcp`**, which Android devices announce while sharing in general mode. It announces its name, address, platform, port, protocol version and certificate fingerprint only while sharing, never account names or passwords. Because network equipment can block multicast, it also checks saved computers directly every few seconds, with a TLS handshake that only reads the certificate's fingerprint.
 - A file the computer sends is offered at a one-time HTTPS address on the same port, which only the signed-in viewer can take, from its own address, within ten minutes.
-- There is no port forwarding or internet relay. Public and relayed ICE candidates are rejected; local mDNS host candidates are allowed. The server checks the browser's origin and host header, allows at most five sign-in attempts a minute per address and across the computer, and permits one signed-in viewer.
+- There is no port forwarding or internet relay. Public and relayed ICE candidates are rejected; local mDNS host candidates are allowed. The server checks the browser's origin and host header, allows at most twenty failed sign-ins a minute from each address and a hundred across the computer, and permits one signed-in viewer.
 - The certificate and private key are kept in the app's data folder. Each of the four most recently used addresses keeps its own certificate, so a computer that moves between Wi-Fi and Ethernet doesn't make other devices verify it again.
 - In general mode, an Android device listens on **TCP port 4778** over TLS, with its private key in the Android Keystore. The computer connects with a certificate of its own, which the device remembers when the person there chooses **Always allow this computer**.
 

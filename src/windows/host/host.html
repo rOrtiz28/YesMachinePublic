@@ -16,6 +16,7 @@
     <script defer src="../../../public/pixel-day.js"></script>
     <script defer src="../../../public/pixel-home.js"></script>
     <script defer src="../../../public/setup-guides.js"></script>
+    <script defer src="../../../public/forget-lists.js"></script>
     <script defer src="../shared/picture-size.js"></script>
     <!-- This window's own scripts. They share one global scope and run in this order; all but start.js only declare
          things, and start.js starts the window. -->
@@ -449,28 +450,32 @@
                 aria-label="Swap Back and Recents"
               ></button>
             </div>
-            <!-- Saved computers, remembered sign-ins and trusted certificates: how many there are, and Forget all,
-                 which asks for a second click. devices.js counts the saved computers, settings.js the others. -->
-            <div class="setting">
-              <div>
-                <h2>Saved computers</h2>
-                <p id="saved-summary">No saved computers yet.</p>
+            <!-- Saved computers, remembered sign-ins and trusted certificates: how many there are, and a list that a
+                 click on the row opens, to forget one, several or all (public/forget-lists.js, which adds the list
+                 to each row). settings.js fills them. -->
+            <div class="setting list-setting" id="saved-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Saved computers</h2>
+                  <p class="list-summary">No saved computers yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-all">Forget all</button>
             </div>
-            <div class="setting">
-              <div>
-                <h2>Remembered sign-ins</h2>
-                <p id="credentials-summary">No remembered sign-ins yet.</p>
+            <div class="setting list-setting" id="credentials-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Remembered sign-ins</h2>
+                  <p class="list-summary">No remembered sign-ins yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-credentials">Forget all</button>
             </div>
-            <div class="setting">
-              <div>
-                <h2>Trusted certificates</h2>
-                <p id="trusted-summary">No trusted computers yet.</p>
+            <div class="setting list-setting" id="trusted-setting">
+              <div class="list-head">
+                <div>
+                  <h2>Trusted certificates</h2>
+                  <p class="list-summary">No trusted computers yet.</p>
+                </div>
               </div>
-              <button type="button" class="ghost" id="forget-trusted">Forget all</button>
             </div>
             <!-- A button for each guide, which opens the setup guide dialog on it (public/setup-guides.js). -->
             <div class="setting">

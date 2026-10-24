@@ -269,7 +269,7 @@ test('a device whose Yes Machine app is in general mode is marked, asked once pe
 // The stream server as the device would run it: a process that prints "ready", reached through a local port. With
 // `ready: false` it prints `said` on stderr and exits instead, and `listing` is what `adb devices` shows. Returns
 // advanced mode, polling already (`android`), the stand-in adb, the servers started, the connections accepted on
-// the forwarded port, and the path of the stand-in jar.
+// the forwarded port, each with the bytes it has received so far (`received`), and the path of the stand-in jar.
 async function deviceSession(
   t,
   {
@@ -287,7 +287,8 @@ async function deviceSession(
   const accepted = [];
   const listener = net
     .createServer((socket) => {
-      socket.resume();
+      socket.received = Buffer.alloc(0);
+      socket.on('data', (chunk) => (socket.received = Buffer.concat([socket.received, chunk])));
       accepted.push(socket);
     })
     .listen(0, '127.0.0.1');
@@ -346,15 +347,34 @@ test('connecting pushes the server, starts it under a fresh name, and forwards a
   assert.ok(adb.calls.includes(`-s R5TEST00001 push ${jar} ${REMOTE}`));
   const [{ file, args }] = started;
   assert.equal(file, '/adb');
-  const name = /local\.yesmachine\.stream\.Server (yes-machine-[0-9a-f]{12}) 6000000$/.exec(
-    args.at(-1),
-  )?.[1];
+  const name =
+    /local\.yesmachine\.stream\.Server (yes-machine-[0-9a-f]{12}) 6000000 [0-9a-f]{32}$/.exec(
+      args.at(-1),
+    )?.[1];
   assert.ok(name, args.at(-1));
   assert.deepEqual(args.slice(0, 3), ['-s', 'R5TEST00001', 'shell']);
   assert.ok(args.at(-1).startsWith(`CLASSPATH=${REMOTE} app_process / `));
   assert.ok(adb.calls.includes(`-s R5TEST00001 forward tcp:0 localabstract:${name}`));
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(accepted.length, 1);
+});
+
+test('each connection to the device server starts with its session’s secret', async (t) => {
+  const { android, started, accepted } = await deviceSession(t);
+  // The secret the computer passed to the server as its last argument.
+  const secretOf = (index) => /([0-9a-f]{32})$/.exec(started[index].args.at(-1))[1];
+  const session = await android.connect('R5TEST00001', 'usb');
+  await session.openFiles();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(accepted.length, 2, 'the stream and a file connection');
+  for (const socket of accepted)
+    assert.equal(socket.received.subarray(0, 16).toString('hex'), secretOf(0));
+  session.close();
+  const next = await android.connect('R5TEST00001', 'usb');
+  t.after(() => next.close());
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.notEqual(secretOf(1), secretOf(0), 'a new secret');
+  assert.equal(accepted[2].received.subarray(0, 16).toString('hex'), secretOf(1));
 });
 
 test('closing a session stops the device server and removes the port forward, once', async (t) => {

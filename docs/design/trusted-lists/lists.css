@@ -1,0 +1,240 @@
+/* Prototype only: the Settings rows whose Forget all becomes a list: saved computers, remembered sign-ins, trusted
+   certificates, and on Android the always allowed computers. A row shows its summary and Show list, and a click
+   anywhere on its top grows it, in four steps like the app's other animations, to its list: a row per computer with
+   its name and details, a checkbox, Select all, and Forget for what is checked. It uses host.css's colors, so it
+   follows night and day. */
+
+html,
+body {
+  height: auto;
+}
+body {
+  overflow: auto;
+}
+.frame-page {
+  padding: 34px 40px 40px;
+}
+.frame-page .settings {
+  margin-top: 22px;
+}
+
+/* --- A row with a list -------------------------------------------------------------------------------------------- */
+
+.list-setting {
+  display: block;
+  padding: 0;
+}
+.list-setting:not(.empty):hover {
+  border-color: var(--mint-line);
+}
+/* The row's top: its title and summary, and Show list. All of it opens and closes the list. */
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+  cursor: pointer;
+}
+.list-setting.empty .list-head {
+  cursor: default;
+}
+.list-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--mint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.list-setting.empty .list-toggle {
+  visibility: hidden;
+}
+.list-toggle .icon {
+  margin: 0;
+  transition: rotate 0.16s steps(3);
+}
+.list-toggle .icon svg {
+  width: 12px;
+  height: 12px;
+}
+.list-setting.open .list-toggle .icon {
+  rotate: 180deg;
+}
+/* The list grows from nothing to its height in four steps, and shrinks back the same way. */
+.list-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.24s steps(4);
+}
+.list-setting.open .list-body {
+  grid-template-rows: 1fr;
+}
+.list-body > .trust-list {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- The list ----------------------------------------------------------------------------------------------------- */
+
+.trust-list {
+  margin: 0 20px;
+  border: 0 solid var(--line-strong);
+  border-radius: 10px;
+}
+.list-setting.open .trust-list {
+  margin-bottom: 20px;
+  border-width: 1px;
+}
+/* The bar on top: Select all on the left, how many are checked and Forget on the right. */
+.list-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line-strong);
+}
+.list-bar .count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.list-bar .ghost {
+  padding: 8px 14px;
+}
+/* Forget, once it asks for the second click. */
+.list-bar .ghost.confirm {
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+.trust-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.trust-list li + li {
+  border-top: 1px solid var(--line);
+}
+/* A computer pops in when the list opens, as a new card does on the house. */
+.trust-list li.appear {
+  animation: appear 0.32s steps(4) both;
+}
+/* A computer: the whole row is its checkbox's label, so a click or tap anywhere on it checks it. */
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.entry:hover {
+  background: var(--raised);
+}
+.entry.selected {
+  background: var(--mint-tint);
+}
+.entry-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.entry-name {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entry-detail {
+  color: var(--muted);
+  font-size: 12px;
+}
+.entry-detail .undated {
+  color: var(--faint);
+}
+
+/* --- Checkboxes --------------------------------------------------------------------------------------------------- */
+
+/* A square box that fills with mint and shows a pixel check, or a dash when only some are checked. The real input
+   stays, invisible, on top of it, so the keyboard and screen readers use it as usual. */
+.check {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--field);
+  color: transparent;
+}
+.check input {
+  position: absolute;
+  inset: -8px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.check svg {
+  width: 12px;
+  height: 12px;
+}
+.check:has(input:checked),
+.check:has(input:indeterminate) {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--mint-ink);
+}
+.check:has(input:focus-visible) {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+.select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* --- The Android app ---------------------------------------------------------------------------------------------- */
+
+/* Bigger rows for fingers. */
+.android .entry {
+  padding: 14px 16px;
+  min-height: 60px;
+}
+.android .check {
+  width: 24px;
+  height: 24px;
+}
+/* On a phone, the row's text and Show list stack, as home.css stacks every setting there. */
+@media (max-width: 700px) {
+  .frame-page {
+    padding: 22px 16px 32px;
+  }
+  .list-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .trust-list {
+    margin: 0 12px;
+  }
+  .list-bar {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-body,
+  .list-toggle .icon,
+  .trust-list li.appear {
+    transition: none;
+    animation: none;
+  }
+}

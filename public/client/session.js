@@ -23,6 +23,8 @@ let pendingIce = [];
 // The computer's name, and its system: 'darwin', 'win32' or 'linux'.
 let hostName = '';
 let hostPlatform = '';
+// Whether the computer takes 'download-decline' for a file this page can't take, as its 'paired' message says.
+let hostDeclines = false;
 // The desktop and Android apps sign in themselves and open this page with the one-time ticket in the address's
 // fragment (#ticket=...). start.js takes it out of the address.
 const appTicket = /^#ticket=([0-9a-f]{64})$/.exec(location.hash)?.[1] || null;
@@ -131,9 +133,10 @@ async function handleSignal(message, thisGeneration) {
         if (lastClipboard === null) lastClipboard = text;
       });
     hostPlatform = message.platform;
+    hostDeclines = message.declines === true;
     keyboard.setHost(hostPlatform);
     hostName =
-      typeof message.hostName === 'string' ? message.hostName.slice(0, 160) : 'Remote computer';
+      typeof message.hostName === 'string' ? cutText(message.hostName, 160) : 'Remote computer';
     $('host-name').textContent = hostName;
     document.title = `${hostName} · Yes Machine`;
     document.querySelectorAll('.host-label').forEach((label) => {

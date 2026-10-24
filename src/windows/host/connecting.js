@@ -74,13 +74,21 @@ async function connectDevice(item) {
 
 // --- Verifying a certificate ----------------------------------------------------------------------------------
 
+/** What trusting a computer sends: its address and port, and its name and system as its card shows them. */
+const trustTarget = (item) => ({
+  ...targetOf(item),
+  name: item.name,
+  system: item.os || PLATFORMS[item.platform] || '',
+});
+
 /**
  * The dialog shown before the first connection to a computer, or to an Android device in general mode, and whenever
  * its certificate changed: it shows the certificate's fingerprint, to compare with the one the other device shows
  * itself. Connect stays disabled until the user ticks that they match. Resolves to true once the user approved and
- * `approve` (which trusts the certificate in the main process) succeeded.
+ * `approve` (which trusts the certificate in the main process) succeeded. A computer's name and system go with the
+ * approval, for Settings' list.
  */
-function confirmTrust(item, check, approve = () => api.trust(targetOf(item))) {
+function confirmTrust(item, check, approve = () => api.trust(trustTarget(item))) {
   const dialog = $('trust-dialog'),
     kind = item.share ? 'device' : 'computer';
   $('trust-title').textContent = check.changed

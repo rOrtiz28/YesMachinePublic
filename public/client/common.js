@@ -9,8 +9,8 @@
 // layout.js and start.js. All of them but start.js only declare state and functions; start.js, last, connects them
 // to the page and starts the viewer.
 //
-// This file holds what every part uses: the page's main elements, the size limits, notices, the status line,
-// icons, and switching between the two screens.
+// This file holds what every part uses: the page's main elements, the size limits, cutting names, notices, the
+// status line, icons, and switching between the two screens.
 
 const $ = (id) => document.getElementById(id);
 // The video of the computer's screen, the area around the monitor drawing, and the session screen.
@@ -25,6 +25,17 @@ const MAX_FILE = 10 * 1024 * 1024 * 1024; // 10 GB
 const CHUNK_SIZE = 48 * 1024;
 const MAX_TEXT = 1024 * 1024;
 let noticeTimer = null;
+
+// --- Names ----------------------------------------------------------------------------------------------------
+
+/**
+ * text cut to at most length UTF-16 units, as slice() counts, without leaving half a character behind. Most emoji,
+ * and every other character outside the Basic Multilingual Plane, take two units (a surrogate pair); a cut between
+ * the two drops the first.
+ */
+function cutText(text, length) {
+  return text.slice(0, length).replace(/[\ud800-\udbff]$/, '');
+}
 
 // --- Notices and the status line ------------------------------------------------------------------------------
 

@@ -86,7 +86,12 @@ function confirmTrust(item, check) {
       if (dialog.open) dialog.close();
       if (ok)
         try {
-          await api.trust(targetOf(item));
+          // The name and system go with the approval, for Settings' list.
+          await api.trust({
+            ...targetOf(item),
+            name: item.name,
+            system: item.os || PLATFORMS[item.platform] || '',
+          });
         } catch (e) {
           notice(e.message, true);
           ok = false;

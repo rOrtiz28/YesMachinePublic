@@ -260,15 +260,18 @@ final class Files {
     /**
      * A name from the computer, made safe to save under, as the app's FileChannel.safeName does: only what follows
      * its last slash or backslash, with control characters and the characters Windows forbids (<>:"|?*) turned into
-     * _, and at most 180 characters. A name that is empty or only dots becomes "file", and one that starts with a dot
-     * gets "file" in front, so it isn't hidden.
+     * _, and at most 180 characters, never cutting an emoji in half. A name that is empty or only dots becomes "file",
+     * and one that starts with a dot gets "file" in front, so it isn't hidden.
      */
     static String safeName(String name) {
         String clean = name
             .replaceAll(".*[\\\\/]", "")
             .replaceAll("[\\p{Cntrl}<>:\"|?*]", "_")
             .trim();
-        if (clean.length() > 180) clean = clean.substring(0, 180);
+        if (clean.length() > 180) {
+            // A cut through an emoji, which takes two chars (a surrogate pair), drops its first half.
+            clean = clean.substring(0, Character.isHighSurrogate(clean.charAt(179)) ? 179 : 180);
+        }
         if (clean.isEmpty() || clean.matches("\\.+")) return "file";
         return clean.startsWith(".") ? "file" + clean : clean; // not hidden
     }
@@ -413,8 +416,9 @@ final class Files {
                         break;
                     }
                 }
-                // The person canceled it on the device. Looked for every 16 parts, a megabyte.
-                if (part % 16 == 0 && new File(folder, "cancel").exists()) {
+                // The person canceled it on the device, which marks the folder cancel, or the app has deleted the
+                // folder. Looked for every 16 parts, a megabyte.
+                if (part % 16 == 0 && (!folder.exists() || new File(folder, "cancel").exists())) {
                     canceled = true;
                     break;
                 }

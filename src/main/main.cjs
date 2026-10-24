@@ -48,7 +48,7 @@ const fs = require('node:fs');
 const { spawn, execFileSync } = require('node:child_process');
 const { vmwareGraphics } = require('./system/gpu.cjs');
 const { createLanServer } = require('./sharing/server.cjs');
-const { localAddresses } = require('./network/security.cjs');
+const { localAddresses, cutText } = require('./network/security.cjs');
 const privateNetworks = require('./network/networks.cjs').createNetworks();
 const { createInputController } = require('./control/input.cjs');
 const { createWindowsCursor } = require('./control/cursor-win.cjs');
@@ -89,9 +89,7 @@ function systemName() {
   } catch {}
   return '';
 }
-const SYSTEM = systemName()
-  .replace(/[\x00-\x1f\x7f]/g, '')
-  .slice(0, 40);
+const SYSTEM = cutText(systemName().replace(/[\x00-\x1f\x7f]/g, ''), 40);
 const authenticate = createAuthenticator();
 
 // --- Chromium settings that must be set before the app is ready ----------------------------------------------------
@@ -492,10 +490,7 @@ app.whenReady().then(() => {
   // General mode: devices that share their screen through the Yes Machine app. They know this computer by its name,
   // without .local, and by its own certificate.
   const computer = {
-    name: os
-      .hostname()
-      .replace(/\.local$/i, '')
-      .slice(0, 64),
+    name: cutText(os.hostname().replace(/\.local$/i, ''), 64),
     system: SYSTEM,
   };
   androidShare = createAndroidShare({
@@ -894,19 +889,23 @@ app.whenReady().then(() => {
 
   handle('trust', (target) => viewers.trust(target));
   const windowName = (name) =>
-    typeof name === 'string' && name.trim() ? name.trim().slice(0, 64) : 'Computer';
+    typeof name === 'string' && name.trim() ? cutText(name.trim(), 64) : 'Computer';
   handle('sign-in', (target, credentials, name) =>
     viewers.signIn(target, credentials, windowName(name)),
   );
   handle('sign-in-saved', (target, name) => viewers.signInSaved(target, windowName(name)));
-  handle('trusted-count', () => viewers.trustedCount());
-  handle('forget-trusted', () => {
-    viewers.forgetTrusted();
+  // Settings' lists of trusted certificates and remembered sign-ins, and forgetting the ones checked there, by
+  // "address:port" key.
+  const keysFrom = (keys) =>
+    Array.isArray(keys) ? keys.filter((key) => typeof key === 'string').slice(0, 1000) : [];
+  handle('trusted-list', () => viewers.trusted());
+  handle('forget-trusted', (keys) => {
+    viewers.forgetTrusted(keysFrom(keys));
     return true;
   });
   handle('credentials-info', () => viewers.credentials());
-  handle('forget-credentials', () => {
-    viewers.forgetCredentials();
+  handle('forget-credentials', (keys) => {
+    viewers.forgetCredentials(keysFrom(keys));
     return true;
   });
 
